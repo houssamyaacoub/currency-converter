@@ -23,6 +23,7 @@ public class LoginController {
         final LoginInputData loginInputData = new LoginInputData(
                 username, password);
 
+        System.out.println("DEBUG: Controller is executing");
         loginUseCaseInteractor.execute(loginInputData);
     }
 }
