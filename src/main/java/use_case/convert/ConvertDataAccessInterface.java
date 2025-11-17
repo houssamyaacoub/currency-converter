@@ -4,13 +4,18 @@ import data_access.ApiConversionResult;
 public interface ConvertDataAccessInterface {
 
     /**
-     * Fetches the conversion result from the external API.
+     * Retrieves conversion data (exchange rate, converted result, timestamp)
+     * from a data source such as an external API or an in-memory test object.
      *
      * @param from   The base currency code (e.g., "CAD").
      * @param to     The target currency code (e.g., "USD").
      * @param amount The amount to convert.
-     * @return An ApiConversionResult object containing the rate, result, and timestamp.
-     * @throws RuntimeException if the API call fails or JSON parsing fails.
+     * @return An ApiConversionResult object containing:
+     *         - exchange rate
+     *         - converted result
+     *         - timestamp/date
+     * @throws RuntimeException if the data source request fails
+     *                          or if parsing fails.
      */
     ApiConversionResult getConversion(String from, String to, double amount);
 }
