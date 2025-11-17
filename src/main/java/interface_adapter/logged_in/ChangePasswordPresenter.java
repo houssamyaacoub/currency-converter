@@ -9,11 +9,11 @@ import use_case.change_password.ChangePasswordOutputData;
  */
 public class ChangePasswordPresenter implements ChangePasswordOutputBoundary {
 
-    private final LoggedInViewModel loggedInViewModel;
+    private final HomeViewModel loggedInViewModel;
     private final ViewManagerModel viewManagerModel;
 
     public ChangePasswordPresenter(ViewManagerModel viewManagerModel,
-                             LoggedInViewModel loggedInViewModel) {
+                             HomeViewModel loggedInViewModel) {
         this.viewManagerModel = viewManagerModel;
         this.loggedInViewModel = loggedInViewModel;
     }
