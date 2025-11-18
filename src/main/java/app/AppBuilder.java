@@ -3,6 +3,9 @@ package app;
 import data_access.FileUserDataAccessObject;
 import entity.UserFactory;
 import interface_adapter.ViewManagerModel;
+import interface_adapter.historic_trends.TrendsController;
+import interface_adapter.historic_trends.TrendsPresenter;
+import interface_adapter.historic_trends.TrendsViewModel;
 import interface_adapter.logged_in.ChangePasswordController;
 import interface_adapter.logged_in.ChangePasswordPresenter;
 import interface_adapter.logged_in.HomeViewModel;
@@ -17,6 +20,9 @@ import interface_adapter.signup.SignupViewModel;
 import use_case.change_password.ChangePasswordInputBoundary;
 import use_case.change_password.ChangePasswordInteractor;
 import use_case.change_password.ChangePasswordOutputBoundary;
+import use_case.historic_trends.TrendsInputBoundary;
+import use_case.historic_trends.TrendsInteractor;
+import use_case.historic_trends.TrendsOutputBoundary;
 import use_case.login.LoginInputBoundary;
 import use_case.login.LoginInteractor;
 import use_case.login.LoginOutputBoundary;
@@ -26,10 +32,7 @@ import use_case.logout.LogoutOutputBoundary;
 import use_case.signup.SignupInputBoundary;
 import use_case.signup.SignupInteractor;
 import use_case.signup.SignupOutputBoundary;
-import view.HomeView;
-import view.LoginView;
-import view.SignupView;
-import view.ViewManager;
+import view.*;
 
 import javax.swing.*;
 import java.awt.*;
@@ -54,8 +57,10 @@ public class AppBuilder {
     private SignupViewModel signupViewModel;
     private LoginViewModel loginViewModel;
     private HomeViewModel homeViewModel;
+    private TrendsViewModel trendsViewModel;
     private HomeView homeView;
     private LoginView loginView;
+    private TrendsView trendsView;
 
     public AppBuilder() {
         cardPanel.setLayout(cardLayout);
@@ -79,6 +84,13 @@ public class AppBuilder {
         homeViewModel = new HomeViewModel();
         homeView = new HomeView(homeViewModel);
         cardPanel.add(homeView, homeView.getViewName());
+        return this;
+    }
+
+    public AppBuilder addTrendsView() {
+        trendsViewModel = new TrendsViewModel();
+        trendsView = new TrendsView(trendsViewModel);
+        cardPanel.add(trendsView, trendsView.getViewName());
         return this;
     }
 
@@ -132,8 +144,17 @@ public class AppBuilder {
         return this;
     }
 
+    public AppBuilder addTrendsUseCase() {
+        final TrendsOutputBoundary trendsPresenter = new TrendsPresenter(viewManagerModel, trendsViewModel);
+        final TrendsInputBoundary trendsInteractor = new TrendsInteractor(trendsPresenter);
+        final TrendsController trendsController = new TrendsController(trendsInteractor);
+        homeView.setTrendsController(trendsController);
+        trendsView.setTrendsController(trendsController);// Should change later (back button)
+        return this;
+    }
+
     public JFrame build() {
-        final JFrame application = new JFrame("User Login Example");
+        final JFrame application = new JFrame("Currency Converter");
         application.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
         application.add(cardPanel);

@@ -6,7 +6,7 @@ import interface_adapter.logged_in.HomeController; // You'll need to create this
 import interface_adapter.logout.LogoutController;
 import interface_adapter.logged_in.ConvertController;
 import interface_adapter.logged_in.ChangePasswordController;
-// import interface_adapter.historical.HistoricalController; // And this one
+import interface_adapter.historic_trends.TrendsController; // And this one
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -23,7 +23,7 @@ public class HomeView extends JPanel implements ActionListener, PropertyChangeLi
     private ConvertController convertController;
     private LogoutController logoutController;
     private ChangePasswordController changePasswordController = null;
-    // private HistoricalController historicalController;
+    private TrendsController trendsController;
 
     // UI Components
     private final JComboBox<String> fromBox;
@@ -38,7 +38,7 @@ public class HomeView extends JPanel implements ActionListener, PropertyChangeLi
 
         setLayout(null); // Keeping your layout choice
 
-        JLabel title = new JLabel("Currencty Converter");
+        JLabel title = new JLabel("Currency Converter");
         title.setBounds(200, 20, 200, 25);
         add(title);
 
@@ -120,6 +120,8 @@ public class HomeView extends JPanel implements ActionListener, PropertyChangeLi
         historicalBtn.addActionListener(e -> {
             // historicalController.execute(); // This will trigger the screen switch via Presenter
             System.out.println("Switch to History View requested");
+            HomeState currentState = homeViewModel.getState();
+            trendsController.execute(currentState.getFromCurrency(), currentState.getToCurrency());
         });
     }
 
@@ -148,6 +150,7 @@ public class HomeView extends JPanel implements ActionListener, PropertyChangeLi
     public void setChangePasswordController(ChangePasswordController changePasswordController) {
         this.changePasswordController = changePasswordController;
     }
+    public void setTrendsController(TrendsController trendsController) {this.trendsController = trendsController;}
 
     public String getViewName() {
         return viewName;

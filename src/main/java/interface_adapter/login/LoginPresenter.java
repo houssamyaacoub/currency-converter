@@ -12,14 +12,14 @@ import use_case.login.LoginOutputData;
 public class LoginPresenter implements LoginOutputBoundary {
 
     private final LoginViewModel loginViewModel;
-    private final HomeViewModel loggedInViewModel;
+    private final HomeViewModel homeViewModel;
     private final ViewManagerModel viewManagerModel;
 
     public LoginPresenter(ViewManagerModel viewManagerModel,
-                          HomeViewModel loggedInViewModel,
+                          HomeViewModel homeViewModel,
                           LoginViewModel loginViewModel) {
         this.viewManagerModel = viewManagerModel;
-        this.loggedInViewModel = loggedInViewModel;
+        this.homeViewModel = homeViewModel;
         this.loginViewModel = loginViewModel;
     }
 
@@ -27,15 +27,15 @@ public class LoginPresenter implements LoginOutputBoundary {
     public void prepareSuccessView(LoginOutputData response) {
         // On success, update the loggedInViewModel's state
         System.out.println("DEBUG: Presenter received success");
-        final HomeState loggedInState = loggedInViewModel.getState();
-        loggedInState.setUsername(response.getUsername());
-        this.loggedInViewModel.firePropertyChange();
+        final HomeState homeState = homeViewModel.getState();
+        homeState.setUsername(response.getUsername());
+        this.homeViewModel.firePropertyChange();
 
         // and clear everything from the LoginViewModel's state
         loginViewModel.setState(new LoginState());
 
         // switch to the logged in view
-        this.viewManagerModel.setState(loggedInViewModel.getViewName());
+        this.viewManagerModel.setState(homeViewModel.getViewName());
         this.viewManagerModel.firePropertyChange();
     }
 
