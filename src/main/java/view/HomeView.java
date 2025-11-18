@@ -2,9 +2,8 @@ package view;
 
 import interface_adapter.logged_in.HomeState;
 import interface_adapter.logged_in.HomeViewModel;
-import interface_adapter.logged_in.HomeController; // You'll need to create this controller
 import interface_adapter.logout.LogoutController;
-import interface_adapter.logged_in.ConvertController;
+import interface_adapter.convert_currency.ConvertController;
 import interface_adapter.logged_in.ChangePasswordController;
 import interface_adapter.historic_trends.TrendsController; // And this one
 

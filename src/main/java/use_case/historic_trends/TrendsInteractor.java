@@ -1,6 +1,6 @@
 package use_case.historic_trends;
 
-import use_case.convert.ConvertDataAccessInterface;
+import use_case.convert.ExchangeRateDataAccessInterface;
 
 
 public class TrendsInteractor implements TrendsInputBoundary{
