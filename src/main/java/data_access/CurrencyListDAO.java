@@ -10,7 +10,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -23,16 +25,23 @@ public class CurrencyListDAO implements CurrencyRepository {
 
     private static final String FILE_PATH = "symbols.json";
     private static final String SYMBOLS_URL = "https://api.exchangeratesapi.io/v1/symbols";
-    private static final String API_KEY = "YOUR_API_KEY_HERE"; // Use your actual key
+    private static final String API_KEY = "2ff60cc320a08a2913da1c7390ff4dc8"; // Use your actual key
 
     private final Map<String, Currency> currencyCache = new HashMap<>();
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
     public CurrencyListDAO() {
-        // Attempt to load local data on startup
+        // 1. ATTEMPT LOCAL READ FIRST. This is the fastest path.
         loadCurrenciesFromFile();
-    }
 
+        // 2. CHECK: If the local read failed to populate the cache (file missing/empty),
+        //    THEN initiate the external fetch.
+        if (currencyCache.isEmpty()) {
+            System.err.println("Local currency cache missing or empty. Triggering API fetch...");
+            // This method will perform the slow I/O and internally call loadCurrenciesFromFile() again.
+            fetchAndWriteToFile();
+        }
+    }
     // --- PART 1: Public Fetch/Write Method (Executed once for setup) ---
 
     /**
@@ -72,6 +81,7 @@ public class CurrencyListDAO implements CurrencyRepository {
             System.err.println("FATAL: Failed to fetch currency symbols from API. Error: " + e.getMessage());
             // If fetch fails, the cache remains empty, and subsequent lookups will fail gracefully.
         }
+
     }
 
     /**
@@ -119,8 +129,9 @@ public class CurrencyListDAO implements CurrencyRepository {
                 // Format: CODE|NAME
                 String[] parts = line.split("\\|");
                 if (parts.length == 2) {
-                    // Create Currency entity: symbol = code
-                    Currency currency = new Currency(parts[1], parts[0]);
+
+                    // PASSING NAME (parts[1]) and CODE (parts[0])
+                    Currency currency = new Currency(parts[1], parts[0]); // Correctly matches constructor (Name, Code)
                     currencyCache.put(parts[0], currency);
                 }
             }
@@ -136,5 +147,24 @@ public class CurrencyListDAO implements CurrencyRepository {
             throw new IllegalArgumentException("Unsupported currency code: " + code + ". Cache size: " + currencyCache.size());
         }
         return currency;
+    }
+
+    // ... inside CurrencyListDAO class ...
+
+    @Override
+    public Currency getByName(String name) {
+        // Iterate through the cache to find the currency with the matching name
+        for (Currency currency : currencyCache.values()) {
+            if (currency.getName().equalsIgnoreCase(name)) {
+                return currency;
+            }
+        }
+        // Fallback or error handling
+        throw new IllegalArgumentException("Currency name not found: " + name);
+    }
+
+    public List<Currency> getAllCurrencies() {
+        // This is a synchronous read from the cache built by loadCurrenciesFromFile()
+        return new ArrayList<>(currencyCache.values());
     }
 }

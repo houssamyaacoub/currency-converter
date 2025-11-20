@@ -20,7 +20,7 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
 
 
     private static final String BASE_URL = "https://api.exchangeratesapi.io/latest";
-    private static final String API_KEY = "API_KEY";
+    private static final String API_KEY = "2ff60cc320a08a2913da1c7390ff4dc8";
 
     private final HttpClient httpClient;
 
@@ -36,8 +36,8 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
 
     public CurrencyConversion getLatestRate(Currency from, Currency to) {
 
-        String fromCode = from.getCode();
-        String toCode = to.getCode();
+        String fromCode = from.getSymbol();
+        String toCode = to.getSymbol();
 
         // 1. Construct the API URL
         String url = String.format("%s?symbols=%s,%s&access_key=%s",
@@ -83,8 +83,8 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
             // Extract Rates using the currency codes (as required by the API response structure)
             String ratesBlock = json.substring(json.indexOf("\"rates\":") + 8, json.indexOf("}", json.indexOf("\"rates\":")));
 
-            double rateFromBase = extractRate(ratesBlock, from.getCode());
-            double rateToTarget = extractRate(ratesBlock, to.getCode());
+            double rateFromBase = extractRate(ratesBlock, from.getSymbol());
+            double rateToTarget = extractRate(ratesBlock, to.getSymbol());
 
             // Calculate Cross-Rate: Rate (From -> To) = Rate_To / Rate_From
             double finalRate = rateToTarget / rateFromBase;
@@ -100,19 +100,57 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
 
 
     private double extractRate(String ratesBlock, String currencyCode) {
+
+        // Search for "CODE":
+
         String codeKey = "\"" + currencyCode + "\":";
+
         int rateStart = ratesBlock.indexOf(codeKey);
 
+
         if (rateStart == -1) {
+
             throw new RuntimeException("Currency code " + currencyCode + " not found in rates block.");
+
         }
+
+
+        // Move start pointer past the key to the start of the value
 
         rateStart += codeKey.length();
+
+
+
+        // Look for a comma (indicating more rates follow)
+
         int rateEnd = ratesBlock.indexOf(",", rateStart);
+
+
+        // If no comma, look for a closing brace
+
         if (rateEnd == -1) {
+
             rateEnd = ratesBlock.indexOf("}", rateStart);
+
         }
 
+
+        // --- CRITICAL FIX HERE ---
+
+        // If neither comma nor brace is found, we are at the end of the string.
+
+        // Use string length as the end index.
+
+        if (rateEnd == -1) {
+
+            rateEnd = ratesBlock.length();
+
+        }
+
+        // -------------------------
+
+
         return Double.parseDouble(ratesBlock.substring(rateStart, rateEnd));
+
     }
 }

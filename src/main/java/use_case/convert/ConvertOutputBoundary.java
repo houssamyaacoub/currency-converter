@@ -13,4 +13,7 @@ public interface ConvertOutputBoundary {
      * conversion details or a specific error message.
      */
     void present(ConvertOutputData outputData);
+
+    void prepareFailView(String s);
 }
+
