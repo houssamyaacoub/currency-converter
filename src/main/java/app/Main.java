@@ -10,11 +10,13 @@ public class Main {
                 .addSignupView()
                 .addHomeView()
                 .addTrendsView()
+                .addConvertView()
                 .addSignupUseCase()
                 .addLoginUseCase()
                 .addLogoutUseCase()
                 .addChangePasswordUseCase()
                 .addTrendsUseCase()
+                .addConvertUseCase()
                 .build();
 
         application.pack();
