@@ -11,4 +11,13 @@ public class ViewManagerModel extends ViewModel<String> {
         this.setState("");
     }
 
+    public void setActiveView(String activeViewName) {
+        this.setState(activeViewName);
+    }
+
+    public void firePropertyChanged() {
+
+        super.firePropertyChange();
+    }
+
 }
