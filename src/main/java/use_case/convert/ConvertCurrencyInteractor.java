@@ -1,55 +1,85 @@
 package use_case.convert;
 
+
 import entity.CurrencyConversion;
+
 import entity.Currency;
 
-/**
- * The Interactor for the Convert Currency Use Case.
- * Now manages obtaining the full Currency entities before calling the DAO.
- */
+
 public class ConvertCurrencyInteractor implements ConvertInputBoundary {
 
+
     private final ExchangeRateDataAccessInterface dataAccess;
+
     private final ConvertOutputBoundary presenter;
-    // full Currency objects (required by the DAO)
+
     private final CurrencyRepository currencyRepository;
 
+
     public ConvertCurrencyInteractor(
+
             ExchangeRateDataAccessInterface dataAccess,
+
             ConvertOutputBoundary presenter,
-            CurrencyRepository currencyRepository) { // Dependency injected
+
+            CurrencyRepository currencyRepository) {
+
         this.dataAccess = dataAccess;
+
         this.presenter = presenter;
+
         this.currencyRepository = currencyRepository;
+
     }
+
 
     @Override
+
     public void execute(ConvertInputData inputData) {
 
-        // --- Entity Lookup ---
-        // Get the full Currency Entities based on the codes from the InputData.
-        Currency fromCurrency;
-        Currency toCurrency;
+        try {
 
-        fromCurrency = currencyRepository.getByCode(inputData.getFromCurrency());
-        toCurrency = currencyRepository.getByCode(inputData.getToCurrency());
+            // 1. Use getByName because InputData contains full names
 
-        CurrencyConversion conversionEntity;
+            // (e.g., "Turkish Lira", not "TRY")
 
-        conversionEntity = dataAccess.getLatestRate(fromCurrency, toCurrency);
+            Currency fromCurrency = currencyRepository.getByName(inputData.getFromCurrency());
 
-        // --- Core Business Logic (Call Entity) ---
-        double convertedAmount = conversionEntity.calculateConvertedAmount(inputData.getAmount());
+            Currency toCurrency = currencyRepository.getByName(inputData.getToCurrency());
 
-        // --- Prepare and Present Output (Main Flow Success) ---
-        // Note: conversionEntity now has the full Currency objects.
-        ConvertOutputData successOutput = new ConvertOutputData(
-                convertedAmount,
-                conversionEntity.getRate(),
-                conversionEntity.getToCurrency().getName(), // Use the code for output data
-                conversionEntity.getTimeStamp()
-        );
 
-        presenter.present(successOutput);
+            // 2. The rest of the flow remains exactly the same.
+
+            // The DAO will extract the codes from these Currency objects to call the API.
+
+            CurrencyConversion conversionEntity = dataAccess.getLatestRate(fromCurrency, toCurrency);
+
+
+            double convertedAmount = conversionEntity.calculateConvertedAmount(inputData.getAmount());
+
+
+            ConvertOutputData successOutput = new ConvertOutputData(
+
+                    convertedAmount,
+
+                    conversionEntity.getRate(),
+
+                    conversionEntity.getToCurrency().getSymbol(), // Use code for consistent display
+
+                    conversionEntity.getTimeStamp()
+
+            );
+
+
+            presenter.present(successOutput);
+
+
+        } catch (Exception e) {
+
+            presenter.prepareFailView("Error: " + e.getMessage());
+
+        }
+
     }
+
 }
