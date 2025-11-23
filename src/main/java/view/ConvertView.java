@@ -10,6 +10,11 @@ import interface_adapter.convert_currency.ConvertState;
 import interface_adapter.convert_currency.ConvertViewModel;
 
 
+import java.time.LocalDateTime;
+
+import java.time.format.DateTimeFormatter;
+
+
 import javax.swing.*;
 
 import java.awt.*;
@@ -52,6 +57,14 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     private final JLabel errorLabel;
 
     private final JButton backBtn;
+
+    // --- AUTO REFRESH UI ---
+    private final JCheckBox autoRefreshCheckBox = new JCheckBox("Auto-refresh (10 minutes)");
+    private final JLabel lastUpdatedLabel = new JLabel("Last updated: N/A");
+
+    // Swing Timer for auto refresh
+    private javax.swing.Timer autoRefreshTimer;
+
 
 
     public ConvertView(ViewManagerModel viewManagerModel, ConvertViewModel viewModel) {
@@ -137,12 +150,20 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
         add(errorLabel, gbc);
 
+        // --- 3.5 AUTO REFRESH UI ---
+        gbc.gridy = 6;
+        gbc.gridwidth = 4;
+        add(autoRefreshCheckBox, gbc);
+
+        gbc.gridy = 7;
+        add(lastUpdatedLabel, gbc);
+
 
         // --- 4. Navigation ---
 
         backBtn = new JButton("Back to Hub");
 
-        gbc.gridy = 6; gbc.gridwidth = 4;
+        gbc.gridy = 8; gbc.gridwidth = 4;
 
         add(backBtn, gbc);
 
@@ -225,6 +246,29 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
         if (initialState.getAmount() != null) amountField.setText(initialState.getAmount());
 
+
+        autoRefreshCheckBox.addActionListener(e -> {
+            if (autoRefreshCheckBox.isSelected()) {
+                int intervalMillis = 10 * 60 * 1000; // 10 mins
+
+
+
+                convertBtn.doClick();
+
+                autoRefreshTimer = new javax.swing.Timer(intervalMillis, ev -> {
+                    convertBtn.doClick();
+                });
+                autoRefreshTimer.start();
+
+            } else {
+                if (autoRefreshTimer != null) {
+                    autoRefreshTimer.stop();
+                    autoRefreshTimer = null;
+                }
+            }
+        });
+
+
     }
 
 
@@ -271,6 +315,9 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
                 );
 
                 rateDetailLabel.setText(state.getRateDetails());
+
+                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("HH:mm:ss");
+                lastUpdatedLabel.setText("Last updated: " + LocalDateTime.now().format(fmt));
 
             }
 
