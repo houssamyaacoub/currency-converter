@@ -3,6 +3,12 @@ package use_case.convert;
 import entity.CurrencyConversion;
 import entity.Currency;
 
+import java.time.LocalDate;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+
 /**
  * Data access interface (Port) for retrieving currency conversion information.
  */
@@ -17,4 +23,5 @@ public interface ExchangeRateDataAccessInterface {
      * @throws RuntimeException if the data source request fails.
      */
     CurrencyConversion getLatestRate(Currency from, Currency to);
+    List<CurrencyConversion> getHistoricalRates(Currency from, Currency to, LocalDate start, LocalDate end);
 }
