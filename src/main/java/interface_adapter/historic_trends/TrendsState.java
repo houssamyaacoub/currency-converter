@@ -35,4 +35,5 @@ public class TrendsState {
         this.dates = dates;
         this.rates = rates;
     }
+
 }

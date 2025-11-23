@@ -11,9 +11,9 @@ public class TrendsController {
         this.trendsUseCaseInteractor = trendsUseCaseInteractor;
     }
 
-    public void execute(String baseCurrency, String targetCurrency) {
+    public void execute(String baseCurrency, String targetCurrency, String timePeriod) {
         // 1. Wrap the strings into an InputData object
-        TrendsInputData inputData = new TrendsInputData(baseCurrency, targetCurrency);
+        TrendsInputData inputData = new TrendsInputData(baseCurrency, targetCurrency, timePeriod);
 
         // 2. Execute the Use Case
         trendsUseCaseInteractor.execute(inputData);

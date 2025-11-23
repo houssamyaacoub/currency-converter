@@ -25,8 +25,10 @@ public class TrendsPresenter implements TrendsOutputBoundary {
         // 2. Update the state with the data passed from the Interactor
         state.setPair(outputData.getBaseCurrency(), outputData.getTargetCurrency());
 
-        // (Optional) If you had real graph data in OutputData, you would set it here too:
         // state.setData(outputData.getDates(), outputData.getRates());
+        if (outputData.getDates() != null && outputData.getRates() != null) {
+            state.setData(outputData.getDates(), outputData.getRates());
+        }
 
         // 3. Update the ViewModel (this triggers the PropertyChange listener if any)
         this.trendsViewModel.setState(state);
@@ -39,10 +41,10 @@ public class TrendsPresenter implements TrendsOutputBoundary {
     }
 
     @Override
-    public void prepareFailView() {
+    public void prepareFailView(String errorMessage) {
         // If something went wrong, we might want to show a popup on the CURRENT screen
         // But since we are switching screens, we usually just don't switch.
-        System.out.println("Error in Trends Presenter");
+        System.out.println("TrendsPresenter: " + errorMessage);
     }
 
     @Override

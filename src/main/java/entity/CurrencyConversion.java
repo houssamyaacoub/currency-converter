@@ -13,7 +13,7 @@ public class CurrencyConversion {
         this.fromCurrency = fromCurrency;
         this.toCurrency = toCurrency;
         this.rate = rate;
-        this.timestamp = timestamp ;
+        this.timestamp = timestamp;
     }
 
     public double calculateConvertedAmount(double amount) {return amount * rate;}
