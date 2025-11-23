@@ -8,6 +8,14 @@ import interface_adapter.ViewManagerModel;
 import interface_adapter.convert_currency.ConvertController;
 import interface_adapter.convert_currency.ConvertPresenter;
 import interface_adapter.convert_currency.ConvertViewModel;
+import interface_adapter.convert_currency.ConvertMultipleViewModel;
+import interface_adapter.convert_currency.ConvertMultipleController;
+import interface_adapter.convert_currency.ConvertMultiplePresenter;
+import use_case.convert_multiple.ConvertMultipleInputBoundary;
+import use_case.convert_multiple.ConvertMultipleInteractor;
+import use_case.convert_multiple.ConvertMultipleOutputBoundary;
+import view.CompareView;
+
 import interface_adapter.historic_trends.TrendsController;
 import interface_adapter.historic_trends.TrendsPresenter;
 import interface_adapter.historic_trends.TrendsViewModel;
@@ -42,6 +50,7 @@ import use_case.signup.SignupInteractor;
 import use_case.signup.SignupOutputBoundary;
 import view.*;
 
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -64,6 +73,8 @@ public class AppBuilder {
     private HomeViewModel homeViewModel;
     private TrendsViewModel trendsViewModel;
     private ConvertViewModel convertViewModel;
+    private ConvertMultipleViewModel convertMultipleViewModel;
+    private CompareView compareView;
     private HomeView homeView;
     private LoginView loginView;
     private TrendsView trendsView;
@@ -110,6 +121,26 @@ public class AppBuilder {
         convertViewModel = new ConvertViewModel();
         convertView = new ConvertView(viewManagerModel, convertViewModel);
         cardPanel.add(convertView, convertView.getViewName());
+        return this;
+    }
+
+    public AppBuilder addCompareView() {
+        convertMultipleViewModel = new ConvertMultipleViewModel();
+        compareView = new CompareView(viewManagerModel, convertMultipleViewModel);
+        cardPanel.add(compareView, compareView.getViewName());
+        return this;
+    }
+
+    public AppBuilder addConvertMultipleUseCase() {
+        CurrencyListDAO currencyListDAO = new CurrencyListDAO();
+        ExchangeRateHostDAO exchangeDAO = new ExchangeRateHostDAO(currencyListDAO);
+        ConvertMultipleOutputBoundary presenter =
+                new ConvertMultiplePresenter(convertMultipleViewModel);
+        ConvertMultipleInputBoundary interactor =
+                new ConvertMultipleInteractor(exchangeDAO, presenter, currencyListDAO);
+        ConvertMultipleController controller =
+                new ConvertMultipleController(interactor);
+        compareView.setConvertMultipleController(controller);
         return this;
     }
 

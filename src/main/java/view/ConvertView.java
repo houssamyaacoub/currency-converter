@@ -50,6 +50,8 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
     private final JButton convertBtn; // NEW: The Submit Button
 
+    private final JButton compareBtn;
+
     private final JLabel resultLabel;
 
     private final JLabel rateDetailLabel;
@@ -116,6 +118,14 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         gbc.gridx = 1; gbc.gridy = 2; gbc.gridwidth = 2;
 
         add(convertBtn, gbc);
+
+
+        compareBtn = new JButton("Compare Multiple");
+        compareBtn.setFont(new Font("SansSerif", Font.BOLD, 15));
+        compareBtn.setBackground(new Color(255, 240, 200));
+
+        gbc.gridx = 2; gbc.gridy = 2; gbc.gridwidth = 2;
+        add(compareBtn, gbc);
 
 
         // --- 3. Output Display ---
@@ -223,6 +233,13 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
                 }
 
         );
+
+
+        compareBtn.addActionListener(e -> {
+            viewManagerModel.setActiveView("compare");
+            viewManagerModel.firePropertyChange();
+            viewManagerModel.firePropertyChanged();
+        });
 
 
         // B. Navigation Listener

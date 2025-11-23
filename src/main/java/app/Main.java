@@ -11,13 +11,16 @@ public class Main {
                 .addHomeView()
                 .addTrendsView()
                 .addConvertView()
+                .addCompareView()
                 .addSignupUseCase()
                 .addLoginUseCase()
                 .addLogoutUseCase()
                 .addChangePasswordUseCase()
                 .addTrendsUseCase()
                 .addConvertUseCase()
+                .addConvertMultipleUseCase()
                 .build();
+
 
         application.pack();
         application.setLocationRelativeTo(null);
