@@ -9,6 +9,11 @@ import use_case.convert.ExchangeRateDataAccessInterface;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
+
 
 /**
  * In-memory implementation of the DAO for storing user data. This implementation does
@@ -53,5 +58,30 @@ public class InMemoryUserDataAccessObject implements SignupUserDataAccessInterfa
         // Replace the old entry with the new password
         users.put(user.getName(), user);
     }
+
+    // ====== Favourites / Recents for in-memory DAO (used mainly in tests) ======
+
+    @Override
+    public List<String> getFavouritesForUser(String username) {
+        // Simple in-memory implementation: no favourites stored, return empty list.
+        return new ArrayList<>();
+    }
+
+    @Override
+    public void setFavouritesForUser(String username, List<String> favs) {
+        // No-op for in-memory DAO. Can be extended later if needed.
+    }
+
+    @Override
+    public Deque<String> getRecentsForUser(String username) {
+        // Simple in-memory implementation: no recents stored, return empty deque.
+        return new ArrayDeque<>();
+    }
+
+    @Override
+    public void setRecentsForUser(String username, Deque<String> recents) {
+        // No-op for in-memory DAO. Can be extended later if needed.
+    }
+
 
 }

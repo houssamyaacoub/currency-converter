@@ -9,6 +9,22 @@ import interface_adapter.convert_currency.ConvertState;
 
 import interface_adapter.convert_currency.ConvertViewModel;
 
+import interface_adapter.favourite_currency.FavouriteCurrencyController;
+
+import interface_adapter.recent_currency.RecentCurrencyController;
+
+import interface_adapter.recent_currency.RecentCurrencyViewModel;
+
+import use_case.recent_currency.RecentCurrencyDataAccessInterface;
+
+import interface_adapter.logged_in.HomeViewModel;
+
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+
+
+
+
 
 import javax.swing.*;
 
@@ -24,6 +40,11 @@ import java.beans.PropertyChangeListener;
 
 import java.util.Objects;
 
+import java.awt.Insets;
+
+import interface_adapter.favourite_currency.FavouriteCurrencyViewModel;
+
+
 
 public class ConvertView extends JPanel implements ActionListener, PropertyChangeListener {
 
@@ -32,7 +53,26 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
     private final ConvertViewModel viewModel;
 
+    private final java.util.List<String> baseCurrencies;
+
     private ConvertController convertController;
+
+    private RecentCurrencyViewModel recentCurrencyViewModel;
+
+    private FavouriteCurrencyViewModel favouriteCurrencyViewModel;
+
+
+    // Controller for Use Case 5 (Favourites)
+    private FavouriteCurrencyController favouriteCurrencyController;
+
+    // Controller for Use Case 8 (Recent / Frequent currencies)
+    private RecentCurrencyController recentCurrencyController;
+
+    private RecentCurrencyDataAccessInterface recentDAO;
+
+    private final HomeViewModel homeViewModel;
+
+
 
 
     // UI Components
@@ -53,10 +93,19 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
     private final JButton backBtn;
 
+    private JButton favouriteFromBtn;
 
-    public ConvertView(ViewManagerModel viewManagerModel, ConvertViewModel viewModel) {
+    private JButton favouriteToBtn;
+
+
+
+    public ConvertView(ViewManagerModel viewManagerModel, ConvertViewModel viewModel, java.util.List<String> baseCurrencies, HomeViewModel homeViewModel) {
 
         this.viewModel = viewModel;
+
+        this.baseCurrencies = baseCurrencies;
+
+        this.homeViewModel = homeViewModel;
 
         this.viewModel.addPropertyChangeListener(this);
 
@@ -70,24 +119,37 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
         // --- 1. Input Fields ---
 
-        // Note: Ensure your Repository handles these full names, or switch to codes like "USD"
+        String[] currencies = baseCurrencies.toArray(new String[0]);
+        favouriteFromBtn = new JButton("★");
+        favouriteFromBtn.setMargin(new Insets(2, 6, 2, 6));
+        favouriteFromBtn.setToolTipText("Add FROM currency to favourites");
 
-        String[] currencies = {"Turkish Lira", "Lebanese Pound", "United States Dollar"};
+        favouriteToBtn = new JButton("★");
+        favouriteToBtn.setMargin(new Insets(2, 6, 2, 6));
+        favouriteToBtn.setToolTipText("Add TO currency to favourites");
 
 
         gbc.gridx = 0; gbc.gridy = 0; add(new JLabel("From:"), gbc);
 
-        gbc.gridx = 1; fromBox = new JComboBox<>(currencies); add(fromBox, gbc);
+        gbc.gridx = 1; gbc.gridy = 0; fromBox = new JComboBox<>(); add(fromBox, gbc);
+        // Add star button for FROM
+        gbc.gridx = 2; gbc.gridy = 0;
+        add(favouriteFromBtn, gbc);
 
 
-        gbc.gridx = 2; gbc.gridy = 0; add(new JLabel("To:"), gbc);
 
-        gbc.gridx = 3; toBox = new JComboBox<>(currencies); add(toBox, gbc);
+        gbc.gridx = 0; gbc.gridy = 1; add(new JLabel("To:"), gbc);
+
+        gbc.gridx = 1; gbc.gridy = 1; toBox = new JComboBox<>(); add(toBox, gbc);
+        // Add star button for TO
+        gbc.gridx = 2; gbc.gridy = 1;
+        add(favouriteToBtn, gbc);
 
 
-        gbc.gridx = 0; gbc.gridy = 1; add(new JLabel("Amount:"), gbc);
 
-        gbc.gridx = 1; gbc.gridwidth = 3; amountField = new JTextField(15); add(amountField, gbc);
+        gbc.gridx = 0; gbc.gridy = 2; add(new JLabel("Amount:"), gbc);
+
+        gbc.gridx = 1; gbc.gridy = 2; gbc.gridwidth = 3; amountField = new JTextField(15); add(amountField, gbc);
 
 
         // --- 2. Convert Button (The Submit Action) ---
@@ -100,14 +162,13 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
 
 
-        gbc.gridx = 1; gbc.gridy = 2; gbc.gridwidth = 2;
+        gbc.gridx = 1; gbc.gridy = 3; gbc.gridwidth = 1;
 
         add(convertBtn, gbc);
 
-
         // --- 3. Output Display ---
 
-        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 4;
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 4;
 
         resultLabel = new JLabel("Enter amount and click Convert.");
 
@@ -118,7 +179,7 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         add(resultLabel, gbc);
 
 
-        gbc.gridy = 4;
+        gbc.gridy = 5;
 
         rateDetailLabel = new JLabel("");
 
@@ -127,7 +188,7 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         add(rateDetailLabel, gbc);
 
 
-        gbc.gridy = 5;
+        gbc.gridy = 6;
 
         errorLabel = new JLabel("");
 
@@ -142,7 +203,7 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
         backBtn = new JButton("Back to Hub");
 
-        gbc.gridy = 6; gbc.gridwidth = 4;
+        gbc.gridy = 7; gbc.gridwidth = 4;
 
         add(backBtn, gbc);
 
@@ -192,7 +253,10 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
                                 // This executes the Interactor -> API -> Presenter -> ViewModel flow
 
                                 convertController.execute(amountText, from, to);
-
+                                if (recentCurrencyController != null) {
+                                    String userId = homeViewModel.getState().getUsername();
+                                    recentCurrencyController.execute(userId, from, to);
+                                }
                             }
 
                         }
@@ -202,6 +266,43 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
                 }
 
         );
+        favouriteFromBtn.addActionListener(e -> {
+            if (favouriteCurrencyController == null) {
+                return;
+            }
+
+            String userId = homeViewModel.getState().getUsername();
+            Object selected = fromBox.getSelectedItem();
+            if (selected == null) {
+                return;
+            }
+            String currencyCode = selected.toString();
+
+            favouriteCurrencyController.execute(userId, currencyCode, true);
+
+            //if (recentCurrencyController != null) {
+              //  recentCurrencyController.execute(userId, currencyCode, currencyCode);
+            //}
+        });
+
+        favouriteToBtn.addActionListener(e -> {
+            if (favouriteCurrencyController == null) {
+                return;
+            }
+
+            String userId = homeViewModel.getState().getUsername();
+            Object selected = toBox.getSelectedItem();
+            if (selected == null) {
+                return;
+            }
+            String currencyCode = selected.toString();
+
+            favouriteCurrencyController.execute(userId, currencyCode, true);
+
+            //if (recentCurrencyController != null) {
+             //   recentCurrencyController.execute(userId, currencyCode, currencyCode);
+            //}
+        });
 
 
         // B. Navigation Listener
@@ -224,6 +325,18 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         if (initialState.getToCurrency() != null) toBox.setSelectedItem(initialState.getToCurrency());
 
         if (initialState.getAmount() != null) amountField.setText(initialState.getAmount());
+
+        // reshow ConvertView
+        this.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentShown(ComponentEvent e) {
+                updateCurrencyDropdown();
+            }
+        });
+
+
+        updateCurrencyDropdown();
+
 
     }
 
@@ -287,5 +400,58 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         this.convertController = convertController;
 
     }
+    public void setFavouriteCurrencyController(FavouriteCurrencyController controller) {
+        this.favouriteCurrencyController = controller;
+    }
 
+    public void setRecentCurrencyController(RecentCurrencyController controller) {
+        this.recentCurrencyController = controller;
+    }
+    public void setRecentCurrencyDAO(RecentCurrencyDataAccessInterface dao) {
+        this.recentDAO = dao;
+        // When the DAO is wired, refresh the dropdown so favourites from CSV
+        // appear at the top even before any in-session favourite actions.
+        updateCurrencyDropdown();
+    }
+
+    public void setRecentCurrencyViewModel(RecentCurrencyViewModel viewModel) {
+        this.recentCurrencyViewModel = viewModel;
+        // When recent/frequent currencies change, update dropdowns
+        this.recentCurrencyViewModel.addPropertyChangeListener(evt -> updateCurrencyDropdown());
+    }
+    public void setFavouriteCurrencyViewModel(FavouriteCurrencyViewModel vm) {
+        this.favouriteCurrencyViewModel = vm;
+
+        // When favourite currencies update → request UI to update dropdown
+        this.favouriteCurrencyViewModel.addPropertyChangeListener(evt -> updateCurrencyDropdown());
+    }
+
+    private void updateCurrencyDropdown() {
+        java.util.List<String> ordered = null;
+
+        // 1. get new order from DAO
+        if (recentDAO != null && homeViewModel != null && homeViewModel.getState() != null) {
+            String userId = homeViewModel.getState().getUsername();
+            if (userId != null && !userId.isEmpty()) {
+                ordered = recentDAO.getOrderedCurrenciesForUser(userId);
+            }
+        }
+
+        // 2. if DAO not return，use baseCurrencies
+        if ((ordered == null || ordered.isEmpty()) && baseCurrencies != null) {
+            ordered = baseCurrencies;
+        }
+
+        if (ordered == null || ordered.isEmpty()) {
+            return;
+        }
+
+        fromBox.removeAllItems();
+        toBox.removeAllItems();
+
+        for (String code : ordered) {
+            fromBox.addItem(code);
+            toBox.addItem(code);
+        }
+    }
 }

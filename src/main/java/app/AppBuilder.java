@@ -54,8 +54,9 @@ public class AppBuilder {
     // set which data access implementation to use, can be any
     // of the classes from the data_access package
 
-    // DAO version using local file storage
-    final FileUserDataAccessObject userDataAccessObject = new FileUserDataAccessObject("users.csv", userFactory);
+    private final CurrencyListDAO currencyRepository = new CurrencyListDAO();
+    final FileUserDataAccessObject userDataAccessObject =
+            new FileUserDataAccessObject("users.csv", userFactory, currencyRepository);
     // DAO version using a shared external database
 
     private SignupView signupView;
@@ -68,8 +69,10 @@ public class AppBuilder {
     private LoginView loginView;
     private TrendsView trendsView;
     private ConvertView convertView;
-    private final CurrencyRepository currencyRepository = new CurrencyListDAO();
-     private final ExchangeRateDataAccessInterface dataAccess = new ExchangeRateHostDAO(currencyRepository);
+    private final ExchangeRateDataAccessInterface dataAccess = new ExchangeRateHostDAO(currencyRepository);
+    // Shared DAO for favourites so all use cases see the same in-memory data.
+    //private data_access.FavouriteCurrencyFileDataAccessObject favouriteDAO;
+
 
 
 
@@ -108,10 +111,20 @@ public class AppBuilder {
 
     public AppBuilder addConvertView() {
         convertViewModel = new ConvertViewModel();
-        convertView = new ConvertView(viewManagerModel, convertViewModel);
+
+        java.util.List<String> baseCurrencies = new java.util.ArrayList<>();
+        for (entity.Currency c : ((CurrencyListDAO) currencyRepository).getAllCurrencies()) {
+            baseCurrencies.add(c.getName());
+        }
+
+
+        convertView = new ConvertView(viewManagerModel, convertViewModel, baseCurrencies, homeViewModel);
+
+
         cardPanel.add(convertView, convertView.getViewName());
         return this;
     }
+
 
     public AppBuilder addSignupUseCase() {
         final SignupOutputBoundary signupOutputBoundary = new SignupPresenter(viewManagerModel,
@@ -181,13 +194,81 @@ public class AppBuilder {
         convertView.setConvertController(convertController);// Should change later (back button)
         return this;
     }
+
+    public AppBuilder addFavouriteCurrencyUseCase() {
+
+        // ViewModel and Presenter
+        final interface_adapter.favourite_currency.FavouriteCurrencyViewModel favouriteVM =
+                new interface_adapter.favourite_currency.FavouriteCurrencyViewModel();
+        final interface_adapter.favourite_currency.FavouriteCurrencyPresenter favouritePresenter =
+                new interface_adapter.favourite_currency.FavouriteCurrencyPresenter(favouriteVM);
+
+        // Use the FileUserDataAccessObject directly as the Favourite DAO.
+        final use_case.favourite_currency.FavouriteCurrencyDataAccessInterface favouriteDAO =
+                (use_case.favourite_currency.FavouriteCurrencyDataAccessInterface) userDataAccessObject;
+
+        // Interactor
+        final use_case.favourite_currency.FavouriteCurrencyInputBoundary favouriteInteractor =
+                new use_case.favourite_currency.FavouriteCurrencyInteractor(
+                        favouriteDAO,
+                        favouritePresenter
+                );
+
+        // Controller
+        final interface_adapter.favourite_currency.FavouriteCurrencyController favouriteController =
+                new interface_adapter.favourite_currency.FavouriteCurrencyController(favouriteInteractor);
+
+        // Inject into Convert view
+        convertView.setFavouriteCurrencyController(favouriteController);
+        convertView.setFavouriteCurrencyViewModel(favouriteVM);
+
+        return this;
+    }
+
+
+
+    public AppBuilder addRecentCurrencyUseCase() {
+
+        // Use FileUserDataAccessObject directly as the Recent DAO
+        final use_case.recent_currency.RecentCurrencyDataAccessInterface recentDAO =
+                (use_case.recent_currency.RecentCurrencyDataAccessInterface) userDataAccessObject;
+
+        // 3. VM + Presenter
+        final interface_adapter.recent_currency.RecentCurrencyViewModel recentVM =
+                new interface_adapter.recent_currency.RecentCurrencyViewModel();
+        final interface_adapter.recent_currency.RecentCurrencyPresenter recentPresenter =
+                new interface_adapter.recent_currency.RecentCurrencyPresenter(recentVM);
+
+        // 4. Interactor
+        final use_case.recent_currency.RecentCurrencyInputBoundary recentInteractor =
+                new use_case.recent_currency.RecentCurrencyInteractor(
+                        recentDAO,
+                        recentPresenter
+                );
+
+        // 5. Controller
+        final interface_adapter.recent_currency.RecentCurrencyController recentController =
+                new interface_adapter.recent_currency.RecentCurrencyController(recentInteractor);
+
+        // 6. Inject into ConvertView
+        convertView.setRecentCurrencyDAO(recentDAO);
+        convertView.setRecentCurrencyViewModel(recentVM);
+        convertView.setRecentCurrencyController(recentController);
+
+        return this;
+    }
+
+
+
+
+
     public JFrame build() {
         final JFrame application = new JFrame("Currency Converter");
         application.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
         application.add(cardPanel);
 
-        viewManagerModel.setState(homeViewModel.getViewName());
+        viewManagerModel.setState(signupViewModel.getViewName());
         viewManagerModel.firePropertyChange();
 
         return application;

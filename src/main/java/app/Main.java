@@ -16,6 +16,8 @@ public class Main {
                 .addLogoutUseCase()
                 .addChangePasswordUseCase()
                 .addTrendsUseCase()
+                .addFavouriteCurrencyUseCase()
+                .addRecentCurrencyUseCase()
                 .addConvertUseCase()
                 .build();
 

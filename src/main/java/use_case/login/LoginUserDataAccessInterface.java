@@ -1,6 +1,8 @@
 package use_case.login;
 
 import entity.User;
+import java.util.List;
+import java.util.Deque;
 
 /**
  * DAO interface for the Login Use Case.
@@ -30,4 +32,11 @@ public interface LoginUserDataAccessInterface {
     void setCurrentUsername(String name);
 
     String getCurrentUsername();
+
+    List<String> getFavouritesForUser(String username);
+    void setFavouritesForUser(String username, List<String> favs);
+
+    Deque<String> getRecentsForUser(String username);
+    void setRecentsForUser(String username, Deque<String> recents);
+
 }
