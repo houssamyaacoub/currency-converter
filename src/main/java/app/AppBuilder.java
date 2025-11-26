@@ -178,7 +178,7 @@ public class AppBuilder {
 
     public AppBuilder addTrendsUseCase() {
         final TrendsOutputBoundary trendsPresenter = new TrendsPresenter(viewManagerModel, trendsViewModel);
-        final TrendsInputBoundary trendsInteractor = new TrendsInteractor(trendsPresenter);
+        final TrendsInputBoundary trendsInteractor = new TrendsInteractor(dataAccess, currencyRepository, trendsPresenter);
         final TrendsController trendsController = new TrendsController(trendsInteractor);
         homeView.setTrendsController(trendsController);
         trendsView.setTrendsController(trendsController);// Should change later (back button)

@@ -1,3 +1,5 @@
+#intro Objectives, user guide, individual contribution (user story or task)
+
 # Clean Architecture Team Lab Activity: Login and Logout
 
 In this team lab activity, your team will:

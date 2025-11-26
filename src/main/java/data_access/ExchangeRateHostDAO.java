@@ -14,13 +14,19 @@ import java.net.http.HttpResponse;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
 
 
     private static final String BASE_URL = "https://api.exchangeratesapi.io/latest";
-    private static final String API_KEY = "2ff60cc320a08a2913da1c7390ff4dc8";
+    private static final String API_KEY = "373df752d259d08cec2a39718fa44cc5";
 
     private final HttpClient httpClient;
 
@@ -64,7 +70,7 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
         }
     }
 
-
+    //Helper method to getLatestRate()
     private CurrencyConversion parseJsonResponse(String json, Currency from, Currency to) {
 
         if (json.contains("\"success\":false") || json.contains("\"error\"")) {
@@ -98,7 +104,7 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
 
     }
 
-
+    // Helper method to parseJsonResponse()
     private double extractRate(String ratesBlock, String currencyCode) {
 
         // Search for "CODE":
@@ -152,5 +158,54 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
 
         return Double.parseDouble(ratesBlock.substring(rateStart, rateEnd));
 
+    }
+    @Override
+    public List<CurrencyConversion> getHistoricalRates(Currency from, Currency to, LocalDate start, LocalDate end) {
+        List<CurrencyConversion> resultList = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+        // We shouldn't make 365 API calls for a year. It's too many calls
+        // If range > 60 days, fetch weekly. Otherwise, fetch daily.
+        long daysBetween = ChronoUnit.DAYS.between(start, end);
+        int step;
+        if(daysBetween > 364) { // year
+            step = 14;
+        }else if(daysBetween > 179){ // 6 months
+            step = 7;
+        }else if(daysBetween > 29){ // 1 month
+            step = 5;
+        } else { // 1 week
+            step = 1;
+        }
+
+        LocalDate current = start;
+
+        while (!current.isAfter(end)) {
+            String dateString = current.format(formatter);
+
+            // Endpoint: /{date} from your screenshot
+            String url = String.format("https://api.exchangeratesapi.io/v1/%s?access_key=%s&symbols=%s,%s",
+                    dateString, API_KEY, from.getSymbol(), to.getSymbol());
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .GET()
+                    .build();
+
+            try {
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+                if (response.statusCode() == 200) {
+                    // Note: parseJsonResponse creates a CurrencyConversion object.
+                    CurrencyConversion conversion = parseJsonResponse(response.body(), from, to);
+                    resultList.add(conversion);
+                }
+            } catch (Exception e) {
+                System.out.println("Skipped " + dateString + ": " + e.getMessage());
+            }
+
+            current = current.plusDays(step);
+        }
+        return resultList;
     }
 }
