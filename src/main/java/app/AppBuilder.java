@@ -68,6 +68,9 @@ public class AppBuilder {
     private HomeView homeView;
     private LoginView loginView;
     private TrendsView trendsView;
+    // NEW: store full currency list so all views can use it
+    private java.util.List<String> baseCurrencies;
+
     private ConvertView convertView;
     private final ExchangeRateDataAccessInterface dataAccess = new ExchangeRateHostDAO(currencyRepository);
     // Shared DAO for favourites so all use cases see the same in-memory data.
@@ -79,6 +82,12 @@ public class AppBuilder {
     public AppBuilder() {
         cardPanel.setLayout(cardLayout);
         this.viewManager = new ViewManager(cardPanel, cardLayout, viewManagerModel);
+        // NEW: initialize baseCurrencies once, so all views can use it
+        baseCurrencies = new java.util.ArrayList<>();
+        for (entity.Currency c : currencyRepository.getAllCurrencies()) {
+            // Use the same display string as in ConvertView (currently currency name)
+            baseCurrencies.add(c.getName());
+        }
     }
 
     public AppBuilder addSignupView() {
@@ -104,19 +113,15 @@ public class AppBuilder {
 
     public AppBuilder addTrendsView() {
         trendsViewModel = new TrendsViewModel();
-        trendsView = new TrendsView(trendsViewModel);
+        // NEW: pass homeViewModel so TrendsView can read current username
+        trendsView = new TrendsView(trendsViewModel, homeViewModel, baseCurrencies);
         cardPanel.add(trendsView, trendsView.getViewName());
         return this;
     }
 
+
     public AppBuilder addConvertView() {
         convertViewModel = new ConvertViewModel();
-
-        java.util.List<String> baseCurrencies = new java.util.ArrayList<>();
-        for (entity.Currency c : ((CurrencyListDAO) currencyRepository).getAllCurrencies()) {
-            baseCurrencies.add(c.getName());
-        }
-
 
         convertView = new ConvertView(viewManagerModel, convertViewModel, baseCurrencies, homeViewModel);
 
@@ -222,6 +227,12 @@ public class AppBuilder {
         convertView.setFavouriteCurrencyController(favouriteController);
         convertView.setFavouriteCurrencyViewModel(favouriteVM);
 
+        // NEW: also inject into TrendsView so it can refresh ordering when favourites change
+        if (trendsView != null) {
+            trendsView.setFavouriteCurrencyController(favouriteController);
+            trendsView.setFavouriteCurrencyViewModel(favouriteVM);
+        }
+
         return this;
     }
 
@@ -254,6 +265,13 @@ public class AppBuilder {
         convertView.setRecentCurrencyDAO(recentDAO);
         convertView.setRecentCurrencyViewModel(recentVM);
         convertView.setRecentCurrencyController(recentController);
+
+        // NEW: also inject into TrendsView so "From"/"To" ordering and Graph clicks update recent
+        if (trendsView != null) {
+            trendsView.setRecentCurrencyDAO(recentDAO);
+            trendsView.setRecentCurrencyViewModel(recentVM);
+            trendsView.setRecentCurrencyController(recentController);
+        }
 
         return this;
     }
