@@ -2,6 +2,9 @@ package view;
 
 
 import interface_adapter.ViewManagerModel;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 
 import interface_adapter.convert_currency.ConvertController;
 
@@ -96,6 +99,14 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     private JButton favouriteFromBtn;
 
     private JButton favouriteToBtn;
+
+    // --- AUTO REFRESH UI ---
+    private final JCheckBox autoRefreshCheckBox = new JCheckBox("Auto refresh");
+    private final JLabel lastUpdatedLabel = new JLabel("Last update: --");
+
+    // Swing Timer for auto refresh
+    private javax.swing.Timer autoRefreshTimer;
+
 
 
 
@@ -198,14 +209,25 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
         add(errorLabel, gbc);
 
+        // --- 3.5 AUTO REFRESH UI ---
+        gbc.gridy = 7;
+        gbc.gridwidth = 4;
+        add(autoRefreshCheckBox, gbc);
+
+        gbc.gridy = 8;
+        add(lastUpdatedLabel, gbc);
+
+
 
         // --- 4. Navigation ---
 
         backBtn = new JButton("Back to Hub");
 
-        gbc.gridy = 7; gbc.gridwidth = 4;
+        gbc.gridy = 9; gbc.gridwidth = 4;
 
         add(backBtn, gbc);
+
+
 
 
 
@@ -336,6 +358,26 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
 
         updateCurrencyDropdown();
+
+        autoRefreshCheckBox.addActionListener(e -> {
+            if (autoRefreshCheckBox.isSelected()) {
+                int intervalMillis = 10 * 60 * 1000; // 10 mins
+
+
+                autoRefreshTimer = new javax.swing.Timer(intervalMillis, ev -> {
+                    convertBtn.doClick();
+                    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                    lastUpdatedLabel.setText("Last updated: " + LocalDateTime.now().format(fmt));
+                });
+                autoRefreshTimer.start();
+
+            } else {
+                if (autoRefreshTimer != null) {
+                    autoRefreshTimer.stop();
+                    autoRefreshTimer = null;
+                }
+            }
+        });
 
 
     }
