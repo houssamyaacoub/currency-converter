@@ -11,6 +11,11 @@ import use_case.logout.LogoutUserDataAccessInterface;
 import use_case.signup.SignupUserDataAccessInterface;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
+
 
 /**
  * The DAO for user data.
@@ -67,6 +72,31 @@ public class DBUserDataAccessObject implements SignupUserDataAccessInterface,
     public void setCurrentUsername(String name) {
         currentUsername = name;
     }
+
+    // ====== Favourites / recents (not supported for DB-based DAO) ======
+
+    @Override
+    public List<String> getFavouritesForUser(String username) {
+        // DB-based DAO does not store favourites; return an empty list.
+        return new ArrayList<>();
+    }
+
+    @Override
+    public void setFavouritesForUser(String username, List<String> favs) {
+        // No-op: favourites are not persisted in the DB-based DAO.
+    }
+
+    @Override
+    public Deque<String> getRecentsForUser(String username) {
+        // DB-based DAO does not store recent currencies; return empty deque.
+        return new ArrayDeque<>();
+    }
+
+    @Override
+    public void setRecentsForUser(String username, Deque<String> recents) {
+        // No-op: recents are not persisted in the DB-based DAO.
+    }
+
 
     @Override
     public String getCurrentUsername() {

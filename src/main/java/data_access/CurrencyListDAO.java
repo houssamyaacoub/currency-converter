@@ -130,9 +130,11 @@ public class CurrencyListDAO implements CurrencyRepository {
                 String[] parts = line.split("\\|");
                 if (parts.length == 2) {
 
-                    // PASSING NAME (parts[1]) and CODE (parts[0])
-                    Currency currency = new Currency(parts[1], parts[0]); // Correctly matches constructor (Name, Code)
-                    currencyCache.put(parts[0], currency);
+                    String rawName = parts[1].trim();
+                    String decodedName = decodeUnicodeEscapes(rawName);
+
+                    Currency currency = new Currency(decodedName, parts[0].trim());
+                    currencyCache.put(parts[0].trim(), currency);
                 }
             }
         } catch (IOException e) {
@@ -167,4 +169,28 @@ public class CurrencyListDAO implements CurrencyRepository {
         // This is a synchronous read from the cache built by loadCurrenciesFromFile()
         return new ArrayList<>(currencyCache.values());
     }
+    /**
+     * Decode unicode escape sequences like "\\u00e3" into real characters (ã).
+     */
+    private String decodeUnicodeEscapes(String input) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < input.length(); ) {
+            char c = input.charAt(i);
+            if (c == '\\' && i + 5 < input.length() && input.charAt(i + 1) == 'u') {
+                String hex = input.substring(i + 2, i + 6);
+                try {
+                    int codePoint = Integer.parseInt(hex, 16);
+                    sb.append((char) codePoint);
+                    i += 6;
+                    continue;
+                } catch (NumberFormatException e) {
+                }
+            }
+            sb.append(c);
+            i++;
+        }
+        return sb.toString();
+    }
+
+
 }
