@@ -12,8 +12,11 @@ import java.util.List;
  *   - Each call to execute(...) TOGGLES the given currency:
  *       * if the currency is not in favourites -> it is added
  *       * if the currency is already in favourites -> it is removed
+ *       * Business rule: each user can have at most 5 favourite currencies.
  */
 public class FavouriteCurrencyInteractor implements FavouriteCurrencyInputBoundary {
+
+    private static final int MAX_FAVOURITES = 5;
 
     private final FavouriteCurrencyDataAccessInterface favouriteGateway;
     private final FavouriteCurrencyOutputBoundary presenter;
@@ -56,12 +59,19 @@ public class FavouriteCurrencyInteractor implements FavouriteCurrencyInputBounda
         List<String> favourites = new ArrayList<>(
                 favouriteGateway.getFavouritesForUser(userId));
 
-        // ----- TOGGLE logic -----
+        // ----- TOGGLE logic with MAX LIMIT -----
         if (favourites.contains(normalized)) {
-            // already a favourite -> remove it
+            // already a favourite -> remove it (always allowed)
             favourites.remove(normalized);
+
         } else {
-            // not yet in favourites -> add it
+            // not yet in favourites -> try to add it
+            if (favourites.size() >= MAX_FAVOURITES) {
+                // list already full -> do NOT modify or save
+                presenter.prepareFailView(
+                        "You can have at most " + MAX_FAVOURITES + " favourite currencies.");
+                return;
+            }
             favourites.add(normalized);
         }
 
