@@ -473,8 +473,6 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
     private void updateCurrencyDropdown() {
         java.util.List<String> ordered = null;
-        Object currentFrom = fromBox.getSelectedItem();
-        Object currentTo = toBox.getSelectedItem();
 
         // Save current selections so we can restore them later
         Object currentFrom = fromBox.getSelectedItem();
