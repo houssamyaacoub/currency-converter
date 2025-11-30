@@ -1,7 +1,6 @@
 package interface_adapter.load_currencies;
 
 import use_case.load_currencies.LoadCurrenciesInputBoundary;
-import use_case.load_currencies.LoadCurrenciesInputData;
 
 /**
  * Controller responsible for triggering the Load Currencies Use Case.

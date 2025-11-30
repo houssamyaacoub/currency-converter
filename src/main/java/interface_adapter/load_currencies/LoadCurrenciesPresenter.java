@@ -1,14 +1,11 @@
 package interface_adapter.load_currencies;
 
-import entity.Currency;
 import interface_adapter.convert_currency.ConvertState;
 import interface_adapter.convert_currency.ConvertViewModel;
 import interface_adapter.historic_trends.TrendsState;
 import interface_adapter.historic_trends.TrendsViewModel;
 import use_case.load_currencies.LoadCurrenciesOutputBoundary;
 import use_case.load_currencies.LoadCurrenciesOutputData;
-
-import java.util.Iterator;
 import java.util.List;
 
 /**

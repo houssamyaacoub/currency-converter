@@ -2,11 +2,9 @@ package use_case.load_currencies;
 
 import entity.Currency;
 import use_case.convert.CurrencyRepository;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Interactor responsible for loading the list of currencies from the Repository

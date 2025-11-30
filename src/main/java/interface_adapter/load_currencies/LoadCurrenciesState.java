@@ -10,11 +10,9 @@ public class LoadCurrenciesState {
 
     public LoadCurrenciesState() {}
 
-    // --- Getters ---
     public boolean isLoading() { return loading; }
     public String getLoadError() { return loadError; }
 
-    // --- Setters ---
     public void setLoading(boolean loading) { this.loading = loading; }
     public void setLoadError(String loadError) { this.loadError = loadError; }
 }
