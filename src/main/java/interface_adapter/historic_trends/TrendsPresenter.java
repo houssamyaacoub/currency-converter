@@ -34,7 +34,6 @@ public class TrendsPresenter implements TrendsOutputBoundary {
         this.trendsViewModel.setState(state);
         this.trendsViewModel.firePropertyChange();
 
-        // 4. Switch the View!
         // We tell the manager to swap the card to "trends"
         this.viewManagerModel.setState(trendsViewModel.getViewName());
         this.viewManagerModel.firePropertyChange();
