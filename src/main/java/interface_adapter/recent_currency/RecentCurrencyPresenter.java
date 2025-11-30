@@ -13,9 +13,23 @@ public class RecentCurrencyPresenter implements RecentCurrencyOutputBoundary {
 
     private final RecentCurrencyViewModel viewModel;
 
+    /**
+     * Creates a new RecentCurrencyPresenter.
+     *
+     * @param viewModel the ViewModel that will be updated when the use case
+     *                  succeeds or fails.
+     */
+
     public RecentCurrencyPresenter(RecentCurrencyViewModel viewModel) {
         this.viewModel = viewModel;
     }
+    /**
+     * Populates the state with the lists returned by the interactor and clears
+     * any previous error message. Then fires a property change so that the UI
+     * can refresh its dropdowns or other components.
+     *
+     * @param outputData the output data produced by the recent currency use case.
+     */
 
     @Override
     public void prepareSuccessView(RecentCurrencyOutputData outputData) {
@@ -29,6 +43,14 @@ public class RecentCurrencyPresenter implements RecentCurrencyOutputBoundary {
         viewModel.setState(state);
         viewModel.firePropertyChange();   // ✔ correct method
     }
+
+    /**
+     * Updates the state with an error message when the use case fails and
+     * notifies the UI that the state has changed.
+     *
+     * @param errorMessage a human-readable error message that can be shown
+     *                     in the UI.
+     */
 
     @Override
     public void prepareFailView(String errorMessage) {

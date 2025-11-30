@@ -19,9 +19,24 @@ public class RecentCurrencyState {
     private List<String> orderedCurrencyList = new ArrayList<>();
     private String errorMessage = "";
 
+    /**
+     * Returns the list of favourite currency codes for the current user.
+     *
+     * @return a mutable copy of the favourite currencies list.
+     */
+
     public List<String> getFavouriteCurrencies() {
         return favouriteCurrencies;
     }
+
+    /**
+     * Sets the list of favourite currency codes.
+     * A defensive copy is stored internally so external callers cannot modify
+     * the internal list directly.
+     *
+     * @param favouriteCurrencies the new favourite currency codes; if {@code null},
+     *                            this will become an empty list.
+     */
 
     public void setFavouriteCurrencies(List<String> favouriteCurrencies) {
         this.favouriteCurrencies = favouriteCurrencies == null
@@ -29,9 +44,23 @@ public class RecentCurrencyState {
                 : new ArrayList<>(favouriteCurrencies);
     }
 
+    /**
+     * Returns the list of top frequent currencies for the current user.
+     *
+     * @return a mutable copy of the top frequent currencies.
+     */
+
     public List<String> getTopFrequentCurrencies() {
         return topFrequentCurrencies;
     }
+
+    /**
+     * Sets the list of top frequent currencies.
+     * A defensive copy is stored internally.
+     *
+     * @param topFrequentCurrencies the new top frequent currencies; if {@code null},
+     *                              this will become an empty list.
+     */
 
     public void setTopFrequentCurrencies(List<String> topFrequentCurrencies) {
         this.topFrequentCurrencies = topFrequentCurrencies == null
@@ -39,19 +68,45 @@ public class RecentCurrencyState {
                 : new ArrayList<>(topFrequentCurrencies);
     }
 
+    /**
+     * Returns the final ordered list of currencies for dropdowns or other views.
+     *
+     * @return a mutable copy of the ordered currency list.
+     */
+
     public List<String> getOrderedCurrencyList() {
         return orderedCurrencyList;
     }
+
+    /**
+     * Sets the final ordered list of currencies that the UI should display.
+     * A defensive copy is stored internally.
+     *
+     * @param orderedCurrencyList the new ordered list; if {@code null},
+     *                            this will become an empty list.
+     */
 
     public void setOrderedCurrencyList(List<String> orderedCurrencyList) {
         this.orderedCurrencyList = orderedCurrencyList == null
                 ? new ArrayList<>()
                 : new ArrayList<>(orderedCurrencyList);
     }
+    /**
+     * Returns the current error message, if any.
+     *
+     * @return the error message; never {@code null}.
+     */
 
     public String getErrorMessage() {
         return errorMessage;
     }
+
+    /**
+     * Sets the error message for this state.
+     *
+     * @param errorMessage the new error message; if {@code null},
+     *                     it will be converted to an empty string.
+     */
 
     public void setErrorMessage(String errorMessage) {
         this.errorMessage = errorMessage == null ? "" : errorMessage;
