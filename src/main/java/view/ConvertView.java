@@ -70,6 +70,8 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     private final JCheckBox autoRefreshCheckBox = new JCheckBox("Auto refresh");
     private final JLabel lastUpdatedLabel = new JLabel("Last update: --");
     private javax.swing.Timer autoRefreshTimer;
+    private static final DateTimeFormatter LAST_UPDATED_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public ConvertView(ViewManagerModel viewManagerModel,
                        ConvertViewModel viewModel,
@@ -294,12 +296,11 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
         autoRefreshCheckBox.addActionListener(e -> {
             if (autoRefreshCheckBox.isSelected()) {
-                int intervalMillis = 10 * 60 * 1000; // 10 minutes
+                int intervalMillis = 60 * 60 * 1000; // currency updates every 1 hour if user enables the autorefresh
 
                 autoRefreshTimer = new javax.swing.Timer(intervalMillis, ev -> {
                     convertBtn.doClick();
-                    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                    lastUpdatedLabel.setText("Last updated: " + LocalDateTime.now().format(fmt));
+
                 });
                 autoRefreshTimer.start();
 
@@ -468,6 +469,11 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
                 );
                 rateDetailLabel.setText(state.getRateDetails());
             }
+            // Updates 'Last updated" on every successful conversion
+            lastUpdatedLabel.setText(
+                    "Last update: " + LocalDateTime.now().format(LAST_UPDATED_FMT)
+            );
+
         }
 
         // NEW: check if the compare use case has populated extra data
