@@ -89,7 +89,8 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     private final JCheckBox autoRefreshCheckBox;
 
     private javax.swing.Timer autoRefreshTimer;
-    private static final DateTimeFormatter LAST_UPDATED_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final DateTimeFormatter LAST_UPDATED_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
      * Constructs the ConvertView.
@@ -440,6 +441,11 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
                 rateDetailLabel.setText(state.getRateDetails());
                 lastUpdatedLabel.setText("Last update: " + LocalDateTime.now().format(LAST_UPDATED_FMT));
             }
+            // Updates 'Last updated" on every successful conversion
+            lastUpdatedLabel.setText(
+                    "Last update: " + LocalDateTime.now().format(LAST_UPDATED_FMT)
+            );
+
         }
 
         // 2. Multi-Compare Update
@@ -470,6 +476,11 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         Object currentFrom = fromBox.getSelectedItem();
         Object currentTo = toBox.getSelectedItem();
 
+        // Save current selections so we can restore them later
+        Object currentFrom = fromBox.getSelectedItem();
+        Object currentTo = toBox.getSelectedItem();
+
+        // 1. get recent/frequent ordering from DAO
         if (recentDAO != null && homeViewModel != null && homeViewModel.getState() != null) {
             String userId = homeViewModel.getState().getUsername();
             if (userId != null && !userId.isEmpty()) ordered = recentDAO.getOrderedCurrenciesForUser(userId);
