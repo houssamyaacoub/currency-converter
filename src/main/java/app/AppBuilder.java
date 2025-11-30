@@ -5,6 +5,11 @@ import data_access.ExchangeRateHostDAO;
 import data_access.FileUserDataAccessObject;
 import entity.UserFactory;
 import interface_adapter.ViewManagerModel;
+import interface_adapter.compare_currencies.CompareCurrenciesController;
+import interface_adapter.compare_currencies.CompareCurrenciesPresenter;
+import use_case.compare_currencies.CompareCurrenciesInputBoundary;
+import use_case.compare_currencies.CompareCurrenciesInteractor;
+import use_case.compare_currencies.CompareCurrenciesOutputBoundary;
 import interface_adapter.convert_currency.ConvertController;
 import interface_adapter.convert_currency.ConvertPresenter;
 import interface_adapter.convert_currency.ConvertViewModel;
@@ -130,6 +135,29 @@ public class AppBuilder {
         return this;
     }
 
+    public AppBuilder addConvertUseCase() {
+        // Single-conversion use case (existing)
+        final ConvertOutputBoundary convertPresenter = new ConvertPresenter(convertViewModel);
+        final ConvertInputBoundary convertInteractor =
+                new ConvertCurrencyInteractor(dataAccess, convertPresenter, currencyRepository);
+        final ConvertController convertController = new ConvertController(convertInteractor);
+        homeView.setConvertController(convertController);
+        convertView.setConvertController(convertController);
+
+        // Multi-compare use case (Use Case 6)
+        final CompareCurrenciesOutputBoundary comparePresenter =
+                new CompareCurrenciesPresenter(convertViewModel);
+        final CompareCurrenciesInputBoundary compareInteractor =
+                new CompareCurrenciesInteractor(dataAccess, currencyRepository, comparePresenter);
+        final CompareCurrenciesController compareController =
+                new CompareCurrenciesController(compareInteractor);
+
+        // Give ConvertView the controller so the "Compare Multiple" button can call it
+        convertView.setCompareCurrenciesController(compareController);
+
+        return this;
+    }
+
 
     public AppBuilder addSignupUseCase() {
         final SignupOutputBoundary signupOutputBoundary = new SignupPresenter(viewManagerModel,
@@ -190,15 +218,6 @@ public class AppBuilder {
         return this;
     }
 
-
-    public AppBuilder addConvertUseCase() {
-        final ConvertOutputBoundary convertPresenter = new ConvertPresenter(convertViewModel);
-        final ConvertInputBoundary convertInteractor = new ConvertCurrencyInteractor(dataAccess, convertPresenter, currencyRepository);
-        final ConvertController convertController = new ConvertController(convertInteractor);
-        homeView.setConvertController(convertController);
-        convertView.setConvertController(convertController);// Should change later (back button)
-        return this;
-    }
 
     public AppBuilder addFavouriteCurrencyUseCase() {
 
