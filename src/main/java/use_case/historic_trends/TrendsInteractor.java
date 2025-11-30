@@ -8,6 +8,7 @@ import use_case.convert.CurrencyRepository;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class TrendsInteractor implements TrendsInputBoundary {
@@ -27,64 +28,47 @@ public class TrendsInteractor implements TrendsInputBoundary {
     @Override
     public void execute(TrendsInputData inputData) {
         String baseName = inputData.getBaseCurrency();
-        List<String> targetNames = inputData.getTargetCurrencies();
+        String targetName = inputData.getTargetCurrency();
         String period = inputData.getTimePeriod();
 
+        // 1. Calculate Dates based on period (Business Logic)
         LocalDate end = LocalDate.now();
         LocalDate start = switch (period) {
             case "1 month" -> end.minusMonths(1);
             case "6 months" -> end.minusMonths(6);
             case "1 year" -> end.minusYears(1);
-            default -> end.minusWeeks(1);
+            default -> end.minusWeeks(1); // default is 1 week
         };
 
+        // 2. Create Entity shells for the DAO
         Currency base = currencyRepository.getByName(baseName);
+        Currency target = currencyRepository.getByName(targetName);
 
-        ArrayList<TrendsOutputData.SeriesData> seriesList = new ArrayList<>();
+        try {
+            // 3. Call DAO and get list of ENTITIES
+            List<CurrencyConversion> conversions = dataAccessObject.getHistoricalRates(base, target, start, end);
 
-        for (String targetName : targetNames) {
-            try {
-                Currency target = currencyRepository.getByName(targetName);
-                List<CurrencyConversion> conversions =
-                        dataAccessObject.getHistoricalRates(base, target, start, end);
+            // 4. Unpack Entities into primitive lists for the View
+            // (The View doesn't need the full Conversion object, just X and Y values for the graph)
+            ArrayList<LocalDate> dates = new ArrayList<>();
+            ArrayList<Double> rates = new ArrayList<>();
 
-                if (conversions.isEmpty()) {
-                    continue;
-                }
-
-                ArrayList<LocalDate> dates = new ArrayList<>();
-                ArrayList<Double> percents = new ArrayList<>();
-
-                double firstRate = conversions.get(0).getRate();
-
-                for (CurrencyConversion conversion : conversions) {
-                    LocalDate date = conversion.getTimeStamp()
-                            .atZone(ZoneId.of("UTC"))
-                            .toLocalDate();
-                    double rate = conversion.getRate();
-                    double pct = (rate / firstRate - 1.0) * 100.0;
-
-                    dates.add(date);
-                    percents.add(pct);
-                }
-
-                TrendsOutputData.SeriesData seriesData =
-                        new TrendsOutputData.SeriesData(targetName, dates, percents);
-                seriesList.add(seriesData);
-
-                System.out.println("Fetched " + conversions.size() + " points for "
-                        + baseName + " -> " + targetName);
-            } catch (Exception e) {
-                System.out.println("Skipping target " + targetName + " due to error: " + e.getMessage());
+            for (CurrencyConversion conversion: conversions) {
+                // Convert Instant -> Date (legacy Date object needed for JFreeChart)
+                LocalDate date = conversion.getTimeStamp()
+                        .atZone(ZoneId.of("UTC"))
+                        .toLocalDate();
+                dates.add(date);
+                rates.add(conversion.getRate());
             }
-        }
 
-        if (seriesList.isEmpty()) {
-            trendsPresenter.prepareFailView("No data available for selected currencies.");
-        } else {
-            TrendsOutputData output =
-                    new TrendsOutputData(baseName, seriesList, false);
+            // 5. Output
+            TrendsOutputData output = new TrendsOutputData(baseName, targetName, dates, rates, false);
             trendsPresenter.prepareSuccessView(output);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            trendsPresenter.prepareFailView("Error: " + e.getMessage());
         }
     }
 

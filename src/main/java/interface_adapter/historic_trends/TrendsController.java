@@ -3,22 +3,24 @@ package interface_adapter.historic_trends;
 import use_case.historic_trends.TrendsInputBoundary;
 import use_case.historic_trends.TrendsInputData;
 
-import java.util.List;
-
 public class TrendsController {
 
-    private final TrendsInputBoundary interactor;
+    final TrendsInputBoundary trendsUseCaseInteractor;
 
-    public TrendsController(TrendsInputBoundary interactor) {
-        this.interactor = interactor;
+    public TrendsController(TrendsInputBoundary trendsUseCaseInteractor) {
+        this.trendsUseCaseInteractor = trendsUseCaseInteractor;
     }
 
-    public void execute(String baseCurrency, List<String> targetCurrencies, String timePeriod) {
-        TrendsInputData inputData = new TrendsInputData(baseCurrency, targetCurrencies, timePeriod);
-        interactor.execute(inputData);
+    public void execute(String baseCurrency, String targetCurrency, String timePeriod) {
+        // 1. Wrap the strings into an InputData object
+        TrendsInputData inputData = new TrendsInputData(baseCurrency, targetCurrency, timePeriod);
+
+        // 2. Execute the Use Case
+        trendsUseCaseInteractor.execute(inputData);
     }
 
+    // Back Button
     public void switchToHome() {
-        interactor.switchToHomeView();
+        trendsUseCaseInteractor.switchToHomeView();
     }
 }

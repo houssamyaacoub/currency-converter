@@ -9,6 +9,8 @@ import interface_adapter.logged_in.HomeViewModel;
 import interface_adapter.logout.LogoutController;
 
 import javax.swing.*;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
@@ -18,126 +20,216 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 
 /**
- * The unified view for the authenticated hub. Combines navigation (Convert/Trends)
- * and user management (Logout/Change Password) into a single GridBagLayout panel.
+ * The unified view for the authenticated hub.
  */
 public class HomeView extends JPanel implements ActionListener, PropertyChangeListener {
 
     public final String viewName = "home";
+
+    // --- UI Constants (SCALED UP FOR LARGER WINDOW) ---
+    private static final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 32); // Was 24
+    private static final Font SUBTITLE_FONT = new Font("Segoe UI", Font.PLAIN, 20); // Was 16
+    private static final Font LABEL_FONT = new Font("Segoe UI", Font.BOLD, 14); // Was 12
+    private static final Font BUTTON_FONT = new Font("Segoe UI", Font.BOLD, 18); // New constant
+
+    private static final Color BACKGROUND_COLOR = new Color(245, 247, 250);
+    private static final Color CARD_COLOR = Color.WHITE;
+    private static final Color PRIMARY_BTN_COLOR = new Color(59, 130, 246);
+    private static final Color SECONDARY_BTN_COLOR = new Color(107, 114, 128);
+    private static final Color DANGER_BTN_COLOR = new Color(220, 38, 38);
+    private static final Color TEXT_COLOR = new Color(31, 41, 55);
+
+    // --- Architecture ---
     private final HomeViewModel homeViewModel;
     private final ViewManagerModel viewManagerModel;
 
-    // Controllers (Injected via setters)
+    // Controllers
     private TrendsController trendsController;
     private ConvertController convertController;
     private ChangePasswordController changePasswordController;
     private LogoutController logoutController;
 
-    // UI Components
-    private final JLabel welcomeLabel;
-    private final JLabel usernameDisplay;
-    private final JLabel passwordErrorField;
-    private final JButton convertBtn;
-    private final JButton historicalBtn;
-    private final JButton logOutBtn;
-    private final JButton changePasswordBtn;
-    private final JTextField passwordInputField;
+    // --- UI Components ---
+    private JLabel usernameDisplay;
+    private JLabel passwordErrorField;
+    private JTextField passwordInputField;
 
-    // Assumed helper class (must be defined elsewhere or nested)
-    private static class LabelTextPanel extends JPanel {
-        LabelTextPanel(JLabel label, JTextField textField) {
-            this.add(label);
-            this.add(textField);
-        }
-    }
+    private JButton convertBtn;
+    private JButton historicalBtn;
+    private JButton logOutBtn;
+    private JButton changePasswordBtn;
 
     public HomeView(HomeViewModel homeViewModel, ViewManagerModel viewManagerModel) {
         this.homeViewModel = homeViewModel;
         this.viewManagerModel = viewManagerModel;
         this.homeViewModel.addPropertyChangeListener(this);
 
+        initializeUI();
+        setupListeners();
+    }
+
+    private void initializeUI() {
         setLayout(new GridBagLayout());
+        setBackground(BACKGROUND_COLOR);
+
+        // --- The Main Card Panel ---
+        JPanel mainCard = new JPanel();
+        mainCard.setLayout(new BoxLayout(mainCard, BoxLayout.Y_AXIS));
+        mainCard.setBackground(CARD_COLOR);
+
+        // Padding to fill space
+        mainCard.setBorder(new CompoundBorder(
+                BorderFactory.createLineBorder(new Color(229, 231, 235), 1),
+                new EmptyBorder(50, 60, 50, 60)
+        ));
+
+        // 1. Header Section
+        JPanel headerPanel = createHeaderPanel();
+        mainCard.add(headerPanel);
+        mainCard.add(Box.createVerticalStrut(35)); // More spacing
+        mainCard.add(createSeparator());
+        mainCard.add(Box.createVerticalStrut(35));
+
+        // 2. Navigation Section
+        JLabel navLabel = new JLabel("DASHBOARD");
+        navLabel.setFont(LABEL_FONT);
+        navLabel.setForeground(Color.GRAY);
+        navLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        mainCard.add(navLabel);
+        mainCard.add(Box.createVerticalStrut(15));
+
+        JPanel navPanel = createNavigationPanel();
+        mainCard.add(navPanel);
+        mainCard.add(Box.createVerticalStrut(40)); // More spacing
+
+        // 3. Account Settings Section
+        JLabel accountLabel = new JLabel("Change password here:");
+        accountLabel.setFont(LABEL_FONT);
+        accountLabel.setForeground(Color.GRAY);
+        accountLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        mainCard.add(accountLabel);
+        mainCard.add(Box.createVerticalStrut(15));
+
+        JPanel accountPanel = createAccountPanel();
+        mainCard.add(accountPanel);
+
+        add(mainCard);
+    }
+
+    private JPanel createHeaderPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(CARD_COLOR);
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // UPDATED: Matches Window Title
+        JLabel title = new JLabel("Currency Converter");
+        title.setFont(TITLE_FONT);
+        title.setForeground(PRIMARY_BTN_COLOR);
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JPanel userPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        userPanel.setBackground(CARD_COLOR);
+        userPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel welcome = new JLabel("Welcome back, ");
+        welcome.setFont(SUBTITLE_FONT);
+        welcome.setForeground(TEXT_COLOR);
+
+        usernameDisplay = new JLabel("");
+        usernameDisplay.setFont(new Font("Segoe UI", Font.BOLD, 20)); // Bigger username
+        usernameDisplay.setForeground(TEXT_COLOR);
+
+        userPanel.add(welcome);
+        userPanel.add(usernameDisplay);
+
+        panel.add(title);
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(userPanel);
+        return panel;
+    }
+
+    private JPanel createNavigationPanel() {
+        // Increased gap between buttons (30px)
+        JPanel panel = new JPanel(new GridLayout(1, 2, 30, 0));
+        panel.setBackground(CARD_COLOR);
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // Increased preferred size for buttons
+        panel.setMaximumSize(new Dimension(800, 80));
+
+        convertBtn = createStyledButton("Convert Currency", PRIMARY_BTN_COLOR, Color.WHITE);
+        historicalBtn = createStyledButton("Historical Trends", PRIMARY_BTN_COLOR, Color.WHITE);
+
+        panel.add(convertBtn);
+        panel.add(historicalBtn);
+        return panel;
+    }
+
+    private JPanel createAccountPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(CARD_COLOR);
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.insets = new Insets(10, 0, 10, 0); // More vertical spacing
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
 
-        // Initialize components
-        usernameDisplay = new JLabel();
+        // Row 1: Password Input
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 1.0;
         passwordInputField = new JTextField(15);
+        passwordInputField.setFont(new Font("Segoe UI", Font.PLAIN, 16)); // Bigger input text
+        passwordInputField.putClientProperty("JTextField.placeholderText", "Enter new password");
+        passwordInputField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.LIGHT_GRAY),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10))); // Bigger input padding
+        panel.add(passwordInputField, gbc);
+
+        // Row 2: Action Buttons
+        gbc.gridy = 1;
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        btnPanel.setBackground(CARD_COLOR);
+
+        changePasswordBtn = createStyledButton("Change Password", SECONDARY_BTN_COLOR, Color.WHITE);
+        changePasswordBtn.setFont(new Font("Segoe UI", Font.BOLD, 14)); // Slightly smaller than main nav
+
+        logOutBtn = createStyledButton("Log Out", DANGER_BTN_COLOR, Color.WHITE);
+        logOutBtn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+
+        btnPanel.add(changePasswordBtn);
+        btnPanel.add(Box.createHorizontalStrut(20));
+        btnPanel.add(logOutBtn);
+
+        panel.add(btnPanel, gbc);
+
+        // Row 3: Error Message
+        gbc.gridy = 2;
         passwordErrorField = new JLabel();
-        passwordErrorField.setForeground(Color.RED);
-        convertBtn = new JButton("Convert Currency");
-        historicalBtn = new JButton("Historical Trends");
-        logOutBtn = new JButton("Log Out");
-        changePasswordBtn = new JButton("Change Password");
+        passwordErrorField.setForeground(DANGER_BTN_COLOR);
+        passwordErrorField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        panel.add(passwordErrorField, gbc);
 
-        // --- 1. Title and Welcome ---
-        JLabel currencyTitle = new JLabel("Currency Converter Hub");
-        currencyTitle.setFont(new Font("SansSerif", Font.BOLD, 20));
-        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
-        add(currencyTitle, gbc);
+        return panel;
+    }
 
-        welcomeLabel = new JLabel("Welcome, ");
-        welcomeLabel.setFont(new Font("SansSerif", Font.PLAIN, 16));
-
-        JPanel userInfoPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        userInfoPanel.add(welcomeLabel);
-        userInfoPanel.add(usernameDisplay);
-
-        gbc.gridy = 1; add(userInfoPanel, gbc); // Display "Welcome, [Username]"
-
-        // --- 2. Main Navigation Buttons ---
-
-        gbc.gridy = 2; gbc.gridwidth = 1; gbc.gridx = 0;
-        add(convertBtn, gbc);
-        gbc.gridx = 1;
-        add(historicalBtn, gbc);
-
-        // --- 3. Change Password Section ---
-
-        JPanel passwordPanel = new LabelTextPanel(new JLabel("New Password:"), passwordInputField);
-
-        gbc.gridy = 4; gbc.gridx = 0; gbc.gridwidth = 2;
-        add(passwordPanel, gbc);
-
-        gbc.gridy = 5; gbc.gridx = 0; gbc.gridwidth = 2;
-        add(passwordErrorField, gbc);
-        // --- 4. User Actions Buttons ---
-
-        JPanel userActionsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        userActionsPanel.add(changePasswordBtn);
-        userActionsPanel.add(logOutBtn);
-
-        gbc.gridy = 3; gbc.gridx = 0; gbc.gridwidth = 2;
-        add(userActionsPanel, gbc);
-
-
-        // A. Simple Navigation (Convert Button)
+    private void setupListeners() {
         convertBtn.addActionListener(e -> {
             viewManagerModel.setActiveView("convert");
             viewManagerModel.firePropertyChanged();
         });
 
-
-
-        // B. Historical Trends (Triggers Controller/Use Case)
         historicalBtn.addActionListener(e -> {
             viewManagerModel.setActiveView("trends");
             viewManagerModel.firePropertyChanged();
         });
 
-        // C. Logout Trigger
         logOutBtn.addActionListener(e -> {
-            if (logoutController != null) {
-                logoutController.execute();
-            }
+            if (logoutController != null) logoutController.execute();
         });
 
-        // D. Change Password Trigger
         changePasswordBtn.addActionListener(e -> {
             if (changePasswordController != null) {
                 final HomeState currentState = homeViewModel.getState();
-
-                // Execute Change Password Use Case
                 changePasswordController.execute(
                         currentState.getUsername(),
                         passwordInputField.getText()
@@ -145,12 +237,10 @@ public class HomeView extends JPanel implements ActionListener, PropertyChangeLi
             }
         });
 
-        // E. Password Input Listener (Updates ViewModel State)
         passwordInputField.getDocument().addDocumentListener(new DocumentListener() {
             private void documentListenerHelper() {
                 final HomeState currentState = homeViewModel.getState();
                 currentState.setPassword(passwordInputField.getText());
-                // Clear any previous error message on new input
                 currentState.setPasswordError(null);
                 homeViewModel.setState(currentState);
             }
@@ -160,55 +250,55 @@ public class HomeView extends JPanel implements ActionListener, PropertyChangeLi
         });
     }
 
-    @Override
-    public void actionPerformed(ActionEvent evt) {
+    private JButton createStyledButton(String text, Color bg, Color fg) {
+        JButton btn = new JButton(text);
+        btn.setFont(BUTTON_FONT);
+
+        btn.setOpaque(true);
+        btn.setBorderPainted(false);
+
+        btn.setBackground(bg);
+        btn.setForeground(fg);
+        btn.setFocusPainted(false);
+        btn.setBorder(new EmptyBorder(15, 30, 15, 30));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        return btn;
     }
+
+    private JSeparator createSeparator() {
+        JSeparator sep = new JSeparator();
+        sep.setForeground(Color.LIGHT_GRAY);
+        sep.setMaximumSize(new Dimension(Short.MAX_VALUE, 1));
+        return sep;
+    }
+
+    // --- Architecture Methods ---
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         final HomeState state = (HomeState) homeViewModel.getState();
-
         if (state != null) {
-            // 1. Update Username Display
             usernameDisplay.setText(state.getUsername());
 
-            // 2. Handle Password Change Error/Success
             if (state.getPasswordError() != null) {
-                passwordErrorField.setText("Error: " + state.getPasswordError());
+                passwordErrorField.setText(state.getPasswordError());
             } else {
                 passwordErrorField.setText("");
-                // Optional: If password was successfully changed, clear the input field
-                if (evt.getPropertyName().equals("passwordUpdateSuccess")) {
+                if ("passwordUpdateSuccess".equals(evt.getPropertyName())) {
                     JOptionPane.showMessageDialog(this, "Password updated successfully!");
                     passwordInputField.setText("");
                 }
             }
-
-            // 3. Handle general errors (e.g., from Logout or Trends initial load)
-            if (state.getPasswordError() != null) {
-                JOptionPane.showMessageDialog(this, state.getPasswordError());
-            }
         }
     }
 
-    public String getViewName() {
-        return viewName;
-    }
+    @Override
+    public void actionPerformed(ActionEvent evt) {}
 
-    // --- SETTERS REQUIRED FOR APPBUILDER WIRING ---
-    public void setLogoutController(LogoutController controller) {
-        this.logoutController = controller;
-    }
+    public String getViewName() { return viewName; }
 
-    public void setChangePasswordController(ChangePasswordController controller) {
-        this.changePasswordController = controller;
-    }
-
-    public void setTrendsController(TrendsController controller) {
-        this.trendsController = controller;
-    }
-
-    public void setConvertController(ConvertController controller) {
-        this.convertController = controller;
-    }
+    public void setLogoutController(LogoutController controller) { this.logoutController = controller; }
+    public void setChangePasswordController(ChangePasswordController controller) { this.changePasswordController = controller; }
+    public void setTrendsController(TrendsController controller) { this.trendsController = controller; }
+    public void setConvertController(ConvertController controller) { this.convertController = controller; }
 }
