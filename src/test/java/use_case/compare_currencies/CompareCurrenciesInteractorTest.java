@@ -2,6 +2,7 @@ package use_case.compare_currencies;
 
 import entity.Currency;
 import entity.CurrencyConversion;
+import entity.CurrencyFactory;
 import org.junit.jupiter.api.Test;
 import use_case.convert.CurrencyRepository;
 import use_case.convert.ExchangeRateDataAccessInterface;
@@ -28,9 +29,10 @@ class CompareCurrenciesInteractorTest {
     private static class StubCurrencyRepository implements CurrencyRepository {
 
         private final Map<String, Currency> byName = new HashMap<>();
+        private final CurrencyFactory factory = new CurrencyFactory();
 
         void addCurrency(String name, String code) {
-            byName.put(name, new Currency(name, code));
+            byName.put(name, factory.create(name, code));
         }
 
         @Override

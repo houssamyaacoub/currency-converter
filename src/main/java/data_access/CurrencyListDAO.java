@@ -1,5 +1,6 @@
 package data_access;
 
+import entity.CurrencyFactory;
 import use_case.convert.CurrencyRepository;
 import entity.Currency;
 
@@ -26,6 +27,7 @@ public class CurrencyListDAO implements CurrencyRepository {
 
     private final Map<String, Currency> currencyCache = new HashMap<>();
     private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final CurrencyFactory currencyFactory = new CurrencyFactory();
 
     public CurrencyListDAO() {
         // 1. ATTEMPT LOCAL READ FIRST. This is the fastest path.
@@ -129,7 +131,7 @@ public class CurrencyListDAO implements CurrencyRepository {
                     String rawName = parts[1].trim();
                     String decodedName = decodeUnicodeEscapes(rawName);
 
-                    Currency currency = new Currency(decodedName, parts[0].trim());
+                    Currency currency = currencyFactory.create(decodedName, parts[0].trim());
                     currencyCache.put(parts[0].trim(), currency);
                 }
             }
