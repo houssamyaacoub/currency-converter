@@ -471,7 +471,11 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     private void updateCurrencyDropdown() {
         java.util.List<String> ordered = null;
 
-        // 1. get new order from DAO
+        // Save current selections so we can restore them later
+        Object currentFrom = fromBox.getSelectedItem();
+        Object currentTo = toBox.getSelectedItem();
+
+        // 1. get recent/frequent ordering from DAO
         if (recentDAO != null && homeViewModel != null && homeViewModel.getState() != null) {
             String userId = homeViewModel.getState().getUsername();
             if (userId != null && !userId.isEmpty()) {
@@ -479,7 +483,7 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
             }
         }
 
-        // 2. if DAO not return，use baseCurrencies
+        // 2. If DAO has nothing, fall back to base currencies
         if ((ordered == null || ordered.isEmpty()) && baseCurrencies != null) {
             ordered = baseCurrencies;
         }
@@ -488,12 +492,21 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
             return;
         }
 
+        // Clear and rebuild dropdowns
         fromBox.removeAllItems();
         toBox.removeAllItems();
 
         for (String code : ordered) {
             fromBox.addItem(code);
             toBox.addItem(code);
+        }
+
+        // Restore previous selection if possible
+        if (currentFrom != null) {
+            fromBox.setSelectedItem(currentFrom);
+        }
+        if (currentTo != null) {
+            toBox.setSelectedItem(currentTo);
         }
     }
 }
