@@ -118,7 +118,6 @@ public class AppBuilder {
 
     public AppBuilder addTrendsView() {
         trendsViewModel = new TrendsViewModel();
-        // NEW: pass homeViewModel so TrendsView can read current username
         trendsView = new TrendsView(trendsViewModel, homeViewModel, baseCurrencies);
         cardPanel.add(trendsView, trendsView.getViewName());
         return this;
