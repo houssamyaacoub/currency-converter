@@ -13,9 +13,23 @@ public class FavouriteCurrencyPresenter implements FavouriteCurrencyOutputBounda
 
     private final FavouriteCurrencyViewModel viewModel;
 
+    /**
+     * Creates a new FavouriteCurrencyPresenter.
+     *
+     * @param viewModel the ViewModel that will be updated when the use case
+     *                  succeeds or fails.
+     */
+
     public FavouriteCurrencyPresenter(FavouriteCurrencyViewModel viewModel) {
         this.viewModel = viewModel;
     }
+
+    /**
+     * Updates the ViewModel with the new list of favourite currencies and
+     * clears any previous error message.
+     *
+     * @param outputData the output data produced by the use case interactor.
+     */
 
     @Override
     public void prepareSuccessView(FavouriteCurrencyOutputData outputData) {
@@ -27,6 +41,13 @@ public class FavouriteCurrencyPresenter implements FavouriteCurrencyOutputBounda
         viewModel.setState(state);
         viewModel.firePropertyChange();   // ← matches teammate's code
     }
+
+    /**
+     * Updates the ViewModel to reflect a failure in the use case execution.
+     *
+     * @param errorMessage a human-readable error message that can be shown
+     *                     in the UI.
+     */
 
     @Override
     public void prepareFailView(String errorMessage) {

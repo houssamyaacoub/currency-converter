@@ -50,6 +50,27 @@ import view.*;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * Builder responsible for wiring together all views, view models,
+ * controllers and use cases for the Swing application.
+ * Usage:
+ *     JFrame frame = new AppBuilder()
+ *             .addLoginView()
+ *             .addSignupView()
+ *             .addHomeView()
+ *             .addTrendsView()
+ *             .addConvertView()
+ *             .addSignupUseCase()
+ *             .addLoginUseCase()
+ *             .addLogoutUseCase()
+ *             .addChangePasswordUseCase()
+ *             .addTrendsUseCase()
+ *             .addFavouriteCurrencyUseCase()
+ *             .addRecentCurrencyUseCase()
+ *             .addConvertUseCase()
+ *             .build();
+ */
+
 public class AppBuilder {
     private final JPanel cardPanel = new JPanel();
     private final CardLayout cardLayout = new CardLayout();
@@ -82,6 +103,13 @@ public class AppBuilder {
     //private data_access.FavouriteCurrencyFileDataAccessObject favouriteDAO;
 
 
+    /**
+     * Creates a new {@code AppBuilder} and pre-loads the list of available
+     * currencies from {@link CurrencyListDAO}. The list is reused by multiple
+     * views so that they share a single source of truth.
+     */
+
+
 
 
     public AppBuilder() {
@@ -95,12 +123,25 @@ public class AppBuilder {
         }
     }
 
+    /**
+     * Registers the signup view with the card panel.
+     *
+     * @return this builder for method chaining
+     */
+
     public AppBuilder addSignupView() {
         signupViewModel = new SignupViewModel();
         signupView = new SignupView(signupViewModel);
         cardPanel.add(signupView, signupView.getViewName());
         return this;
     }
+
+
+    /**
+     * Registers the login view with the card panel.
+     *
+     * @return this builder
+     */
 
     public AppBuilder addLoginView() {
         loginViewModel = new LoginViewModel();
@@ -109,6 +150,12 @@ public class AppBuilder {
         return this;
     }
 
+    /**
+     * Registers the home view with the card panel.
+     *
+     * @return this builder
+     */
+
     public AppBuilder addHomeView() {
         homeViewModel = new HomeViewModel();
         homeView = new HomeView(homeViewModel, viewManagerModel);
@@ -116,12 +163,24 @@ public class AppBuilder {
         return this;
     }
 
+    /**
+     * Registers the historic trends view with the card panel.
+     *
+     * @return this builder
+     */
+
     public AppBuilder addTrendsView() {
         trendsViewModel = new TrendsViewModel();
         trendsView = new TrendsView(trendsViewModel, homeViewModel, baseCurrencies);
         cardPanel.add(trendsView, trendsView.getViewName());
         return this;
     }
+
+    /**
+     * Registers the main currency conversion view with the card panel.
+     *
+     * @return this builder
+     */
 
 
     public AppBuilder addConvertView() {
@@ -133,6 +192,13 @@ public class AppBuilder {
         cardPanel.add(convertView, convertView.getViewName());
         return this;
     }
+
+    /**
+     * Wires the single-conversion and "compare multiple currencies"
+     * use cases into the home and convert views.
+     *
+     * @return this builder
+     */
 
     public AppBuilder addConvertUseCase() {
         // Single-conversion use case (existing)
