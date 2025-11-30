@@ -1,28 +1,33 @@
 package view;
 
 import interface_adapter.ViewManagerModel;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 import interface_adapter.convert_currency.ConvertController;
 import interface_adapter.convert_currency.ConvertState;
 import interface_adapter.convert_currency.ConvertViewModel;
+
 import interface_adapter.favourite_currency.FavouriteCurrencyController;
 import interface_adapter.favourite_currency.FavouriteCurrencyViewModel;
+
 import interface_adapter.recent_currency.RecentCurrencyController;
 import interface_adapter.recent_currency.RecentCurrencyViewModel;
 import use_case.recent_currency.RecentCurrencyDataAccessInterface;
+
 import interface_adapter.logged_in.HomeViewModel;
+
 import interface_adapter.compare_currencies.CompareCurrenciesController;
 
 import javax.swing.*;
-import javax.swing.border.CompoundBorder;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -30,91 +35,60 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.category.DefaultCategoryDataset;
 
-/**
- * ConvertView
- * <p>
- * The main screen for performing currency conversions.
- * Features:
- * 1. Single pair conversion (From -> To).
- * 2. Multi-currency comparison (Bar Chart).
- * 3. Auto-refresh capability.
- * 4. Integration with Favourites and Recent History.
- */
 public class ConvertView extends JPanel implements ActionListener, PropertyChangeListener {
 
     public final String viewName = "convert";
 
-    // --- UI Constants ---
-    private static final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 22);
-    private static final Font LABEL_FONT = new Font("Segoe UI", Font.PLAIN, 14);
-    private static final Font RESULT_FONT = new Font("Segoe UI", Font.BOLD, 18);
-    private static final Color BACKGROUND_COLOR = new Color(245, 247, 250);
-    private static final Color PANEL_COLOR = Color.WHITE;
-    private static final Color ACTION_BTN_COLOR = new Color(34, 197, 94);   // Green
-    private static final Color COMPARE_BTN_COLOR = new Color(99, 102, 241); // Indigo
-    private static final Color TEXT_COLOR = new Color(31, 41, 55);
-
-    // --- Architecture Components ---
     private final ConvertViewModel viewModel;
+    private final java.util.List<String> baseCurrencies;
     private final HomeViewModel homeViewModel;
-    private final ViewManagerModel viewManagerModel;
-    private final List<String> baseCurrencies;
 
-    // Controllers
     private ConvertController convertController;
-    private FavouriteCurrencyController favouriteCurrencyController;
-    private RecentCurrencyController recentCurrencyController;
-    private CompareCurrenciesController compareCurrenciesController;
-
-    // View Models & DAO
     private RecentCurrencyViewModel recentCurrencyViewModel;
     private FavouriteCurrencyViewModel favouriteCurrencyViewModel;
+    private FavouriteCurrencyController favouriteCurrencyController;
+    private RecentCurrencyController recentCurrencyController;
     private RecentCurrencyDataAccessInterface recentDAO;
 
-    // --- UI Components ---
+    // NEW: controller for Use Case 6 (multi-currency compare)
+    private CompareCurrenciesController compareCurrenciesController;
+
+    // UI Components
     private final JComboBox<String> fromBox;
     private final JComboBox<String> toBox;
     private final JTextField amountField;
-
     private final JButton convertBtn;
     private final JButton compareMultipleBtn;
-    private final JButton backBtn;
-    private final JButton favouriteFromBtn;
-    private final JButton favouriteToBtn;
-
     private final JLabel resultLabel;
     private final JLabel rateDetailLabel;
     private final JLabel errorLabel;
-    private final JLabel lastUpdatedLabel;
-    private final JCheckBox autoRefreshCheckBox;
+    private final JButton backBtn;
+    private JButton favouriteFromBtn;
+    private JButton favouriteToBtn;
 
+    // Auto refresh stuff
+    private final JCheckBox autoRefreshCheckBox = new JCheckBox("Auto refresh");
+    private final JLabel lastUpdatedLabel = new JLabel("Last update: --");
     private javax.swing.Timer autoRefreshTimer;
     private static final DateTimeFormatter LAST_UPDATED_FMT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    /**
-     * Constructs the ConvertView.
-     */
     public ConvertView(ViewManagerModel viewManagerModel,
                        ConvertViewModel viewModel,
-                       List<String> baseCurrencies,
+                       java.util.List<String> baseCurrencies,
                        HomeViewModel homeViewModel) {
-        this.viewManagerModel = viewManagerModel;
+
         this.viewModel = viewModel;
         this.baseCurrencies = baseCurrencies;
         this.homeViewModel = homeViewModel;
 
         this.viewModel.addPropertyChangeListener(this);
 
-        // Initialize Components
-        fromBox = new JComboBox<>();
-        toBox = new JComboBox<>();
-        amountField = new JTextField(10);
-        amountField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
 
-        convertBtn = createStyledButton("Convert", ACTION_BTN_COLOR, Color.WHITE);
-        compareMultipleBtn = createStyledButton("Compare Multiple", COMPARE_BTN_COLOR, Color.WHITE);
-        backBtn = new JButton("Back to Hub");
+        // --- 1. Input fields (From / To / Amount) ---
 
         favouriteFromBtn = new JButton("★");
         favouriteFromBtn.setMargin(new Insets(2, 6, 2, 6));
@@ -124,322 +98,376 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         favouriteToBtn.setMargin(new Insets(2, 6, 2, 6));
         favouriteToBtn.setToolTipText("Add TO currency to favourites");
 
+        // From
+        gbc.gridx = 0; gbc.gridy = 0;
+        add(new JLabel("From:"), gbc);
+
+        gbc.gridx = 1; gbc.gridy = 0;
+        fromBox = new JComboBox<>();
+        add(fromBox, gbc);
+
+        gbc.gridx = 2; gbc.gridy = 0;
+        add(favouriteFromBtn, gbc);
+
+        // To
+        gbc.gridx = 0; gbc.gridy = 1;
+        add(new JLabel("To:"), gbc);
+
+        gbc.gridx = 1; gbc.gridy = 1;
+        toBox = new JComboBox<>();
+        add(toBox, gbc);
+
+        gbc.gridx = 2; gbc.gridy = 1;
+        add(favouriteToBtn, gbc);
+
+        // Amount
+        gbc.gridx = 0; gbc.gridy = 2;
+        add(new JLabel("Amount:"), gbc);
+
+        gbc.gridx = 1; gbc.gridy = 2; gbc.gridwidth = 3;
+        amountField = new JTextField(15);
+        add(amountField, gbc);
+
+        // --- 2. Convert + Compare Multiple buttons ---
+
+        convertBtn = new JButton("Convert");
+        convertBtn.setFont(new Font("SansSerif", Font.BOLD, 15));
+        convertBtn.setBackground(new Color(100, 200, 100)); // green-ish
+
+        gbc.gridx = 1; gbc.gridy = 3; gbc.gridwidth = 1;
+        add(convertBtn, gbc);
+
+        // NEW button for use case 6
+        compareMultipleBtn = new JButton("Compare Multiple");
+        compareMultipleBtn.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        compareMultipleBtn.setBackground(new Color(180, 200, 255));
+
+        gbc.gridx = 2; gbc.gridy = 3; gbc.gridwidth = 1;
+        add(compareMultipleBtn, gbc);
+
+        // --- 3. Output labels (single conversion) ---
+
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 4;
         resultLabel = new JLabel("Enter amount and click Convert.");
-        resultLabel.setFont(RESULT_FONT);
-        resultLabel.setForeground(TEXT_COLOR);
+        resultLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
         resultLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        add(resultLabel, gbc);
 
-        rateDetailLabel = new JLabel(" ");
+        gbc.gridy = 5;
+        rateDetailLabel = new JLabel("");
         rateDetailLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        add(rateDetailLabel, gbc);
 
-        errorLabel = new JLabel(" ");
+        gbc.gridy = 6;
+        errorLabel = new JLabel("");
         errorLabel.setForeground(Color.RED);
         errorLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        add(errorLabel, gbc);
 
-        autoRefreshCheckBox = new JCheckBox("Auto-refresh (1h)");
-        autoRefreshCheckBox.setBackground(PANEL_COLOR);
-        lastUpdatedLabel = new JLabel("Last update: --");
-        lastUpdatedLabel.setFont(new Font("Segoe UI", Font.ITALIC, 11));
-        lastUpdatedLabel.setForeground(Color.GRAY);
+        // --- 3.5 Auto refresh controls ---
 
-        initializeUI();
-        setupListeners();
+        gbc.gridy = 7;
+        gbc.gridwidth = 4;
+        add(autoRefreshCheckBox, gbc);
 
-        // Initial State Load
-        updateCurrencyDropdown();
-        restoreState();
-    }
+        gbc.gridy = 8;
+        add(lastUpdatedLabel, gbc);
 
-    /**
-     * Sets up the main visual layout using GridBagLayout for centering.
-     */
-    private void initializeUI() {
-        setLayout(new GridBagLayout());
-        setBackground(BACKGROUND_COLOR);
+        // --- 4. Navigation back ---
 
-        // Main Card Panel
-        JPanel card = new JPanel(new BorderLayout(0, 20));
-        card.setBackground(PANEL_COLOR);
-        card.setBorder(new CompoundBorder(
-                BorderFactory.createLineBorder(new Color(229, 231, 235), 1),
-                new EmptyBorder(30, 40, 30, 40)
-        ));
+        backBtn = new JButton("Back to Hub");
+        gbc.gridy = 9; gbc.gridwidth = 4;
+        add(backBtn, gbc);
 
-        // 1. Header
-        JLabel title = new JLabel("Currency Converter");
-        title.setFont(TITLE_FONT);
-        title.setHorizontalAlignment(SwingConstants.CENTER);
-        card.add(title, BorderLayout.NORTH);
+        // --- Listeners: Convert button ---
 
-        // 2. Center Content
-        JPanel centerPanel = new JPanel();
-        centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
-        centerPanel.setBackground(PANEL_COLOR);
+        convertBtn.addActionListener(evt -> {
+            if (!evt.getSource().equals(convertBtn)) return;
 
-        // Currency Selectors
-        centerPanel.add(createCurrencySelectionPanel());
-        centerPanel.add(Box.createVerticalStrut(20));
+            String amountText = amountField.getText();
+            Object fromObj = fromBox.getSelectedItem();
+            Object toObj = toBox.getSelectedItem();
 
-        // Action Buttons
-        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
-        actionPanel.setBackground(PANEL_COLOR);
-        actionPanel.add(convertBtn);
-        actionPanel.add(compareMultipleBtn);
-        centerPanel.add(actionPanel);
-        centerPanel.add(Box.createVerticalStrut(20));
+            if (fromObj == null || toObj == null) {
+                JOptionPane.showMessageDialog(this,
+                        "Please select both FROM and TO currencies.",
+                        "Missing selection",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
 
-        // Amount Input (Between Buttons and Results)
-        JPanel amountPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        amountPanel.setBackground(PANEL_COLOR);
-        JLabel amountLbl = new JLabel("Amount:");
-        amountLbl.setFont(LABEL_FONT);
-        amountPanel.add(amountLbl);
-        amountPanel.add(amountField);
-        centerPanel.add(amountPanel);
-        centerPanel.add(Box.createVerticalStrut(20));
+            String from = fromObj.toString();
+            String to = toObj.toString();
 
-        // Result Section
-        JPanel resultPanel = new JPanel();
-        resultPanel.setLayout(new BoxLayout(resultPanel, BoxLayout.Y_AXIS));
-        resultPanel.setBackground(new Color(249, 250, 251)); // Very light gray box
-        resultPanel.setBorder(new EmptyBorder(15, 15, 15, 15));
-        resultPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            // Keep state updated so if we come back later, we see the same inputs.
+            ConvertState currentState = viewModel.getState();
+            currentState.setAmount(amountText);
+            currentState.setFromCurrency(from);
+            currentState.setToCurrency(to);
+            viewModel.setState(currentState);
 
-        resultLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        rateDetailLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        errorLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            if (convertController != null) {
+                convertController.execute(amountText, from, to);
 
-        resultPanel.add(resultLabel);
-        resultPanel.add(Box.createVerticalStrut(5));
-        resultPanel.add(rateDetailLabel);
-        resultPanel.add(Box.createVerticalStrut(5));
-        resultPanel.add(errorLabel);
+                // Also record as recent usage for this user
+                if (recentCurrencyController != null && homeViewModel != null
+                        && homeViewModel.getState() != null) {
+                    String userId = homeViewModel.getState().getUsername();
+                    if (userId != null && !userId.isEmpty()) {
+                        recentCurrencyController.execute(userId, from, to);
+                    }
+                }
+            }
+        });
 
-        centerPanel.add(resultPanel);
-        centerPanel.add(Box.createVerticalStrut(15));
+        // --- Listeners: favourite buttons ---
 
-        // Refresh Section
-        JPanel refreshPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        refreshPanel.setBackground(PANEL_COLOR);
-        refreshPanel.add(autoRefreshCheckBox);
-        refreshPanel.add(Box.createHorizontalStrut(10));
-        refreshPanel.add(lastUpdatedLabel);
-        centerPanel.add(refreshPanel);
+        favouriteFromBtn.addActionListener(e -> {
+            if (favouriteCurrencyController == null || homeViewModel == null || homeViewModel.getState() == null) {
+                return;
+            }
 
-        card.add(centerPanel, BorderLayout.CENTER);
+            String userId = homeViewModel.getState().getUsername();
+            Object selected = fromBox.getSelectedItem();
+            if (userId == null || userId.isEmpty() || selected == null) {
+                return;
+            }
 
-        // 3. Footer (Back Button)
-        JPanel footer = new JPanel();
-        footer.setBackground(PANEL_COLOR);
-        backBtn.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        backBtn.setFocusPainted(false);
-        footer.add(backBtn);
-        card.add(footer, BorderLayout.SOUTH);
+            String currencyCode = selected.toString();
+            favouriteCurrencyController.execute(userId, currencyCode, true);
+        });
 
-        add(card);
-    }
+        favouriteToBtn.addActionListener(e -> {
+            if (favouriteCurrencyController == null || homeViewModel == null || homeViewModel.getState() == null) {
+                return;
+            }
 
-    /**
-     * Creates the form layout for From/To inputs (Amount removed from here).
-     */
-    private JPanel createCurrencySelectionPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(PANEL_COLOR);
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
-        gbc.anchor = GridBagConstraints.WEST;
+            String userId = homeViewModel.getState().getUsername();
+            Object selected = toBox.getSelectedItem();
+            if (userId == null || userId.isEmpty() || selected == null) {
+                return;
+            }
 
-        // Row 1: From
-        addLabel(panel, "From:", 0, 0, gbc);
-        addComponent(panel, fromBox, 1, 0, gbc, true);
-        addComponent(panel, favouriteFromBtn, 2, 0, gbc, false);
+            String currencyCode = selected.toString();
+            favouriteCurrencyController.execute(userId, currencyCode, true);
+        });
 
-        // Row 2: To
-        addLabel(panel, "To:", 0, 1, gbc);
-        addComponent(panel, toBox, 1, 1, gbc, true);
-        addComponent(panel, favouriteToBtn, 2, 1, gbc, false);
+        // --- Navigation: back to hub ---
 
-        return panel;
-    }
-
-    /**
-     * Configures all action listeners.
-     */
-    private void setupListeners() {
-        // Convert Action
-        convertBtn.addActionListener(evt -> handleConvertAction());
-
-        // Compare Multiple Action
-        compareMultipleBtn.addActionListener(e -> handleMultiCompareAction());
-
-        // Favourites
-        favouriteFromBtn.addActionListener(e -> handleFavouriteAction(fromBox.getSelectedItem()));
-        favouriteToBtn.addActionListener(e -> handleFavouriteAction(toBox.getSelectedItem()));
-
-        // Back Navigation
         backBtn.addActionListener(e -> {
             viewManagerModel.setActiveView("home");
             viewManagerModel.firePropertyChange();
         });
 
-        // Auto Refresh
-        autoRefreshCheckBox.addActionListener(e -> handleAutoRefresh());
+        // --- Show-time hook: whenever this view becomes visible, refresh dropdown ---
 
-        // Update Dropdowns on Show
         this.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentShown(ComponentEvent e) {
                 updateCurrencyDropdown();
             }
         });
-    }
 
-    private void handleConvertAction() {
-        String amountText = amountField.getText();
-        Object fromObj = fromBox.getSelectedItem();
-        Object toObj = toBox.getSelectedItem();
+        // --- NEW: Compare Multiple button behaviour ---
 
-        if (fromObj == null || toObj == null) {
-            JOptionPane.showMessageDialog(this, "Please select both currencies.", "Error", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
+        compareMultipleBtn.addActionListener(e -> {
+            if (compareCurrenciesController == null) {
+                JOptionPane.showMessageDialog(this,
+                        "Multi-compare feature is not wired yet.",
+                        "Warning",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
 
-        String from = fromObj.toString();
-        String to = toObj.toString();
+            Object fromSelected = fromBox.getSelectedItem();
+            if (fromSelected == null) {
+                JOptionPane.showMessageDialog(this,
+                        "Please choose a base currency first.",
+                        "Missing base",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
 
-        // Update State
-        ConvertState currentState = viewModel.getState();
-        currentState.setAmount(amountText);
-        currentState.setFromCurrency(from);
-        currentState.setToCurrency(to);
-        viewModel.setState(currentState);
+            String base = fromSelected.toString();
+            openMultiCompareDialog(base);
+        });
 
-        if (convertController != null) {
-            convertController.execute(amountText, from, to);
+        // --- Auto-refresh checkbox ---
 
-            // Log to Recent History
-            if (recentCurrencyController != null && homeViewModel != null && homeViewModel.getState() != null) {
-                String userId = homeViewModel.getState().getUsername();
-                if (userId != null && !userId.isEmpty()) {
-                    recentCurrencyController.execute(userId, from, to);
+        autoRefreshCheckBox.addActionListener(e -> {
+            if (autoRefreshCheckBox.isSelected()) {
+                int intervalMillis = 60 * 60 * 1000; // currency updates every 1 hour if user enables the autorefresh
+
+                autoRefreshTimer = new javax.swing.Timer(intervalMillis, ev -> {
+                    convertBtn.doClick();
+
+                });
+                autoRefreshTimer.start();
+
+            } else {
+                if (autoRefreshTimer != null) {
+                    autoRefreshTimer.stop();
+                    autoRefreshTimer = null;
                 }
             }
+        });
+
+        // Initialize dropdown contents & restore previous state
+        updateCurrencyDropdown();
+        ConvertState initialState = viewModel.getState();
+        if (initialState.getFromCurrency() != null) {
+            fromBox.setSelectedItem(initialState.getFromCurrency());
+        }
+        if (initialState.getToCurrency() != null) {
+            toBox.setSelectedItem(initialState.getToCurrency());
+        }
+        if (initialState.getAmount() != null) {
+            amountField.setText(initialState.getAmount());
         }
     }
 
-    private void handleFavouriteAction(Object selected) {
-        if (favouriteCurrencyController == null || homeViewModel == null || homeViewModel.getState() == null) return;
-
-        String userId = homeViewModel.getState().getUsername();
-        if (userId == null || userId.isEmpty() || selected == null) return;
-
-        favouriteCurrencyController.execute(userId, selected.toString(), true);
-    }
-
-    private void handleMultiCompareAction() {
-        if (compareCurrenciesController == null) {
-            JOptionPane.showMessageDialog(this, "Multi-compare feature not ready.", "Warning", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        Object fromSelected = fromBox.getSelectedItem();
-        if (fromSelected == null) return;
-
-        openMultiCompareDialog(fromSelected.toString());
-    }
-
-    private void handleAutoRefresh() {
-        if (autoRefreshCheckBox.isSelected()) {
-            int intervalMillis = 60 * 60 * 1000; // 1 Hour
-            autoRefreshTimer = new javax.swing.Timer(intervalMillis, ev -> convertBtn.doClick());
-            autoRefreshTimer.start();
-        } else {
-            if (autoRefreshTimer != null) {
-                autoRefreshTimer.stop();
-                autoRefreshTimer = null;
-            }
-        }
-    }
-
-    // --- Helper UI Methods ---
+    // --- Helper: open the "selection page" for multiple compare, with checkboxes ---
 
     private void openMultiCompareDialog(String baseCurrency) {
-        JPanel panel = new JPanel(new BorderLayout(5, 5));
-        panel.add(new JLabel("Compare " + baseCurrency + " against up to 5 currencies:"), BorderLayout.NORTH);
+        JPanel panel = new JPanel();
+        panel.setLayout(new BorderLayout(5, 5));
+
+        JLabel info = new JLabel("Pick up to 5 currencies to compare against " + baseCurrency);
+        panel.add(info, BorderLayout.NORTH);
 
         JPanel checkBoxPanel = new JPanel();
         checkBoxPanel.setLayout(new BoxLayout(checkBoxPanel, BoxLayout.Y_AXIS));
+
         List<JCheckBox> boxes = new ArrayList<>();
 
         for (String code : baseCurrencies) {
-            if (code.equals(baseCurrency)) continue;
+            // Optionally skip the base currency itself
+            if (code.equals(baseCurrency)) {
+                continue;
+            }
+
             JCheckBox cb = new JCheckBox(code);
             boxes.add(cb);
             checkBoxPanel.add(cb);
         }
 
         JScrollPane scrollPane = new JScrollPane(checkBoxPanel);
-        scrollPane.setPreferredSize(new Dimension(280, 200));
+        scrollPane.setPreferredSize(new Dimension(260, 220));
         panel.add(scrollPane, BorderLayout.CENTER);
 
-        int result = JOptionPane.showConfirmDialog(this, panel, "Compare Currencies", JOptionPane.OK_CANCEL_OPTION);
-
-        if (result == JOptionPane.OK_OPTION) {
-            List<String> selected = new ArrayList<>();
-            for (JCheckBox cb : boxes) {
-                if (cb.isSelected()) selected.add(cb.getText());
-            }
-
-            if (selected.isEmpty() || selected.size() > 5) {
-                JOptionPane.showMessageDialog(this, "Select between 1 and 5 currencies.", "Selection Error", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            compareCurrenciesController.execute(baseCurrency, selected);
-        }
-    }
-
-    private void showComparisonChart(String baseCurrency, List<String> targets, List<Double> rates) {
-        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
-        for (int i = 0; i < targets.size(); i++) {
-            dataset.addValue(rates.get(i), "Rate", targets.get(i));
-        }
-
-        JFreeChart chart = ChartFactory.createBarChart(
-                "Relative Strength vs " + baseCurrency,
-                "Target Currency", "Rate", dataset,
-                PlotOrientation.VERTICAL, false, true, false
+        int result = JOptionPane.showConfirmDialog(
+                this,
+                panel,
+                "Compare multiple currencies",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
         );
 
-        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), "Comparison Result", Dialog.ModalityType.MODELESS);
-        dialog.getContentPane().add(new ChartPanel(chart));
+        if (result != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        List<String> selectedTargets = new ArrayList<>();
+        for (JCheckBox cb : boxes) {
+            if (cb.isSelected()) {
+                selectedTargets.add(cb.getText());
+            }
+        }
+
+        if (selectedTargets.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Please select at least one target currency.",
+                    "No selection",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        if (selectedTargets.size() > 5) {
+            JOptionPane.showMessageDialog(this,
+                    "You can compare at most 5 currencies.",
+                    "Too many selected",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // Fire the use case → interactor will talk to API, presenter will fill ConvertState
+        compareCurrenciesController.execute(baseCurrency, selectedTargets);
+    }
+
+    // --- Helper: show the bar chart popup for the multi-compare results ---
+
+    private void showComparisonChart(String baseCurrency,
+                                     List<String> targets,
+                                     List<Double> rates) {
+        if (targets == null || rates == null || targets.isEmpty() || rates.isEmpty()) {
+            return;
+        }
+
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+
+        // Each bar: "how many units of target per 1 base"
+        for (int i = 0; i < targets.size(); i++) {
+            String target = targets.get(i);
+            Double rate = rates.get(i);
+            if (rate != null) {
+                dataset.addValue(rate, "Rate", target);
+            }
+        }
+
+        String title = "Relative strength vs " + baseCurrency;
+        String xLabel = "Target currency";
+        String yLabel = "Units of target per 1 " + baseCurrency;
+
+        JFreeChart chart = ChartFactory.createBarChart(
+                title,
+                xLabel,
+                yLabel,
+                dataset,
+                PlotOrientation.VERTICAL,
+                false,
+                true,
+                false
+        );
+
+        ChartPanel chartPanel = new ChartPanel(chart);
+        chartPanel.setPreferredSize(new Dimension(600, 400));
+
+        JDialog dialog = new JDialog(
+                SwingUtilities.getWindowAncestor(this),
+                "Multi-currency comparison",
+                Dialog.ModalityType.MODELESS
+        );
+        dialog.getContentPane().add(chartPanel);
         dialog.pack();
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
 
-    private void restoreState() {
-        ConvertState initialState = viewModel.getState();
-        if (initialState.getFromCurrency() != null) fromBox.setSelectedItem(initialState.getFromCurrency());
-        if (initialState.getToCurrency() != null) toBox.setSelectedItem(initialState.getToCurrency());
-        if (initialState.getAmount() != null) amountField.setText(initialState.getAmount());
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        // not really used, we’re wiring actions with lambdas
     }
-
-    // --- PropertyChangeListener ---
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        // Single-conversion display (old behaviour)
         ConvertState state = viewModel.getState();
 
-        // 1. Single Conversion Update
         if (state.getError() != null) {
             errorLabel.setText("Error: " + state.getError());
-            resultLabel.setText("Conversion Failed");
+            resultLabel.setText("Conversion Failed.");
             rateDetailLabel.setText("");
         } else {
             errorLabel.setText("");
-            if (state.getConvertedAmountResult() != null && !state.getConvertedAmountResult().equals("0.00")) {
-                resultLabel.setText(state.getAmount() + " " + state.getFromCurrency() + " = " + state.getConvertedAmountResult() + " " + state.getToCurrency());
+
+            if (state.getConvertedAmountResult() != null
+                    && !state.getConvertedAmountResult().equals("0.00")) {
+
+                resultLabel.setText(
+                        state.getAmount() + " " + state.getFromCurrency() +
+                                " = " + state.getConvertedAmountResult() + " " + state.getToCurrency()
+                );
                 rateDetailLabel.setText(state.getRateDetails());
-                lastUpdatedLabel.setText("Last update: " + LocalDateTime.now().format(LAST_UPDATED_FMT));
             }
             // Updates 'Last updated" on every successful conversion
             lastUpdatedLabel.setText(
@@ -448,33 +476,61 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
         }
 
-        // 2. Multi-Compare Update
-        if (state.getCompareTargets() != null && !state.getCompareTargets().isEmpty()) {
+        // NEW: check if the compare use case has populated extra data
+        if (state.getCompareTargets() != null
+                && !state.getCompareTargets().isEmpty()
+                && state.getCompareRates() != null
+                && !state.getCompareRates().isEmpty()) {
+
             List<String> targets = new ArrayList<>(state.getCompareTargets());
             List<Double> rates = new ArrayList<>(state.getCompareRates());
 
-            // Clear state immediately to prevent re-triggering
+            // clear so we don't re-trigger on the next propertyChange
             state.setCompareTargets(new ArrayList<>());
+            state.setCompareRates(new ArrayList<>());
             viewModel.setState(state);
 
             showComparisonChart(state.getFromCurrency(), targets, rates);
         }
     }
 
-    // --- Dependency Setters ---
-    public void setConvertController(ConvertController c) { this.convertController = c; }
-    public void setFavouriteCurrencyController(FavouriteCurrencyController c) { this.favouriteCurrencyController = c; }
-    public void setRecentCurrencyController(RecentCurrencyController c) { this.recentCurrencyController = c; }
-    public void setCompareCurrenciesController(CompareCurrenciesController c) { this.compareCurrenciesController = c; }
+    public String getViewName() {
+        return viewName;
+    }
 
-    public void setRecentCurrencyDAO(RecentCurrencyDataAccessInterface dao) { this.recentDAO = dao; updateCurrencyDropdown(); }
-    public void setRecentCurrencyViewModel(RecentCurrencyViewModel vm) { this.recentCurrencyViewModel = vm; vm.addPropertyChangeListener(e -> updateCurrencyDropdown()); }
-    public void setFavouriteCurrencyViewModel(FavouriteCurrencyViewModel vm) { this.favouriteCurrencyViewModel = vm; vm.addPropertyChangeListener(e -> updateCurrencyDropdown()); }
+    public void setConvertController(ConvertController convertController) {
+        this.convertController = convertController;
+    }
+
+    public void setFavouriteCurrencyController(FavouriteCurrencyController controller) {
+        this.favouriteCurrencyController = controller;
+    }
+
+    public void setRecentCurrencyController(RecentCurrencyController controller) {
+        this.recentCurrencyController = controller;
+    }
+
+    public void setRecentCurrencyDAO(RecentCurrencyDataAccessInterface dao) {
+        this.recentDAO = dao;
+        updateCurrencyDropdown();
+    }
+
+    public void setRecentCurrencyViewModel(RecentCurrencyViewModel viewModel) {
+        this.recentCurrencyViewModel = viewModel;
+        this.recentCurrencyViewModel.addPropertyChangeListener(evt -> updateCurrencyDropdown());
+    }
+
+    public void setFavouriteCurrencyViewModel(FavouriteCurrencyViewModel vm) {
+        this.favouriteCurrencyViewModel = vm;
+        this.favouriteCurrencyViewModel.addPropertyChangeListener(evt -> updateCurrencyDropdown());
+    }
+
+    public void setCompareCurrenciesController(CompareCurrenciesController controller) {
+        this.compareCurrenciesController = controller;
+    }
 
     private void updateCurrencyDropdown() {
         java.util.List<String> ordered = null;
-        Object currentFrom = fromBox.getSelectedItem();
-        Object currentTo = toBox.getSelectedItem();
 
         // Save current selections so we can restore them later
         Object currentFrom = fromBox.getSelectedItem();
@@ -483,48 +539,34 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         // 1. get recent/frequent ordering from DAO
         if (recentDAO != null && homeViewModel != null && homeViewModel.getState() != null) {
             String userId = homeViewModel.getState().getUsername();
-            if (userId != null && !userId.isEmpty()) ordered = recentDAO.getOrderedCurrenciesForUser(userId);
+            if (userId != null && !userId.isEmpty()) {
+                ordered = recentDAO.getOrderedCurrenciesForUser(userId);
+            }
         }
-        if ((ordered == null || ordered.isEmpty()) && baseCurrencies != null) ordered = baseCurrencies;
 
-        if (ordered == null) return;
+        // 2. If DAO has nothing, fall back to base currencies
+        if ((ordered == null || ordered.isEmpty()) && baseCurrencies != null) {
+            ordered = baseCurrencies;
+        }
+
+        if (ordered == null || ordered.isEmpty()) {
+            return;
+        }
 
         fromBox.removeAllItems();
         toBox.removeAllItems();
+
         for (String code : ordered) {
             fromBox.addItem(code);
             toBox.addItem(code);
         }
 
-        if (currentFrom != null) fromBox.setSelectedItem(currentFrom);
-        if (currentTo != null) toBox.setSelectedItem(currentTo);
+        // Restore previous selection if possible
+        if (currentFrom != null) {
+            fromBox.setSelectedItem(currentFrom);
+        }
+        if (currentTo != null) {
+            toBox.setSelectedItem(currentTo);
+        }
     }
-
-    // --- Helper UI Generators ---
-    private void addLabel(JPanel panel, String text, int x, int y, GridBagConstraints gbc) {
-        gbc.gridx = x; gbc.gridy = y; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
-        JLabel label = new JLabel(text);
-        label.setFont(LABEL_FONT);
-        panel.add(label, gbc);
-    }
-    private void addComponent(JPanel panel, JComponent comp, int x, int y, GridBagConstraints gbc, boolean grow) {
-        gbc.gridx = x; gbc.gridy = y; gbc.weightx = grow ? 1.0 : 0; gbc.fill = grow ? GridBagConstraints.HORIZONTAL : GridBagConstraints.NONE;
-        panel.add(comp, gbc);
-    }
-
-    private JButton createStyledButton(String text, Color bg, Color fg) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setOpaque(true);
-        btn.setBorderPainted(false);
-        btn.setBackground(bg);
-        btn.setForeground(fg);
-        btn.setFocusPainted(false);
-        btn.setBorder(new EmptyBorder(10, 20, 10, 20));
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        return btn;
-    }
-
-    @Override public void actionPerformed(ActionEvent e) {}
-    public String getViewName() { return viewName; }
 }

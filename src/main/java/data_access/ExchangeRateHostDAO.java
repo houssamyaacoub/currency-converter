@@ -165,7 +165,7 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
         // We shouldn't make 365 API calls for a year. It's too many calls
-        // Depending on time range, we fetch a certain amount. We will interpolate between data points when graping.
+        // If range > 60 days, fetch weekly. Otherwise, fetch daily.
         long daysBetween = ChronoUnit.DAYS.between(start, end);
         int step;
         if(daysBetween > 364) { // year
