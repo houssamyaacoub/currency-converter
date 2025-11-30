@@ -26,7 +26,7 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
 
 
     private static final String BASE_URL = "https://api.exchangeratesapi.io/latest";
-    private static final String API_KEY = "373df752d259d08cec2a39718fa44cc5";
+    private static final String API_KEY = "2e4ac1b1d2715c5d466819c5241a5844";
 
     private final HttpClient httpClient;
 
@@ -165,7 +165,7 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
         // We shouldn't make 365 API calls for a year. It's too many calls
-        // If range > 60 days, fetch weekly. Otherwise, fetch daily.
+        // Depending on time range, we fetch a certain amount. We will interpolate between data points when graping.
         long daysBetween = ChronoUnit.DAYS.between(start, end);
         int step;
         if(daysBetween > 364) { // year
