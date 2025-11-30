@@ -1,9 +1,14 @@
 package view;
 
+import interface_adapter.historic_trends.TrendsController;
 import interface_adapter.historic_trends.TrendsState;
 import interface_adapter.historic_trends.TrendsViewModel;
-import interface_adapter.historic_trends.TrendsController;
-import use_case.historic_trends.TrendsOutputData;
+import interface_adapter.logged_in.HomeViewModel;
+import interface_adapter.favourite_currency.FavouriteCurrencyController;
+import interface_adapter.favourite_currency.FavouriteCurrencyViewModel;
+import interface_adapter.recent_currency.RecentCurrencyController;
+import interface_adapter.recent_currency.RecentCurrencyViewModel;
+import use_case.recent_currency.RecentCurrencyDataAccessInterface;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -15,6 +20,7 @@ import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -22,44 +28,32 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
-// NEW: imports for home / favourite / recent
-import interface_adapter.logged_in.HomeViewModel;
-import interface_adapter.favourite_currency.FavouriteCurrencyController;
-import interface_adapter.favourite_currency.FavouriteCurrencyViewModel;
-import interface_adapter.recent_currency.RecentCurrencyController;
-import interface_adapter.recent_currency.RecentCurrencyViewModel;
-import use_case.recent_currency.RecentCurrencyDataAccessInterface;
-
+/**
+ * TrendsView
+ * <p>
+ * Represents the User Interface for the Historical Exchange Rates feature.
+ * This class observes the {@link TrendsViewModel} for state changes and delegates
+ * user actions to the {@link TrendsController}.
+ */
 public class TrendsView extends JPanel implements ActionListener, PropertyChangeListener {
+
     public final String viewName = "trends";
+
+    // --- UI Constants ---
+    private static final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 22);
+    private static final Font LABEL_FONT = new Font("Segoe UI", Font.PLAIN, 14);
+    private static final Color BACKGROUND_COLOR = new Color(245, 247, 250);
+    private static final Color PANEL_COLOR = Color.WHITE;
+    private static final Color PRIMARY_BTN_COLOR = new Color(59, 130, 246);
+    private static final Color TEXT_COLOR = new Color(31, 41, 55);
+
+    // --- Architecture Components ---
     private final TrendsViewModel trendsViewModel;
-    private TrendsController trendsController;
-
-    private final JPanel chartContainer;
-    private final JPanel buttonContainer;
-    private final JPanel currencyContainer;
-
-    private final JButton backBtn;
-    private final JButton graphBtn;
-
-    // NEW: full currency list passed from AppBuilder (same as ConvertView)
-    private final java.util.List<String> baseCurrencies;
-
-    private final String[] timePeriods = {"1 week", "1 month", "6 months", "1 year"};
-
-    // NEW: store the combo boxes and list as fields (not local variables)
-    private final JComboBox<String> fromBox;
-    private final JList<String> toList;
-    private final JComboBox<String> timePeriodBox;
-
-    // NEW: star buttons to allow adding favourites from this view
-    private final JButton favouriteFromBtn;
-    private final JButton favouriteToBtn;
-
-    // NEW: references needed to reuse favourites / recent logic
     private final HomeViewModel homeViewModel;
+    private TrendsController trendsController;
 
     private FavouriteCurrencyController favouriteCurrencyController;
     private FavouriteCurrencyViewModel favouriteCurrencyViewModel;
@@ -68,349 +62,324 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
     private RecentCurrencyViewModel recentCurrencyViewModel;
     private RecentCurrencyDataAccessInterface recentDAO;
 
-    // NEW: constructor now also receives HomeViewModel and baseCurrencies
+    // --- UI Components ---
+    private final JPanel chartContainer;
+    private final JComboBox<String> fromBox;
+    private final JComboBox<String> toBox;
+    private final JComboBox<String> timePeriodBox;
+
+    private final JButton graphBtn;
+    private final JButton backBtn;
+    private final JButton favouriteFromBtn;
+    private final JButton favouriteToBtn;
+
+    // --- Data ---
+    private final List<String> baseCurrencies;
+    private final String[] timePeriods = {"1 week", "1 month", "6 months", "1 year"};
+
+    /**
+     * Constructs the TrendsView.
+     */
     public TrendsView(TrendsViewModel trendsViewModel,
                       HomeViewModel homeViewModel,
-                      java.util.List<String> baseCurrencies) {
+                      List<String> baseCurrencies) {
+
         this.trendsViewModel = trendsViewModel;
         this.homeViewModel = homeViewModel;
-        this.baseCurrencies = baseCurrencies; // store full list for fallback
+        this.baseCurrencies = baseCurrencies;
+
         this.trendsViewModel.addPropertyChangeListener(this);
-        try {
-            UIManager.setLookAndFeel("javax.swing.plaf.metal.MetalLookAndFeel");
-        } catch (Exception e) {
-            System.out.println("L&F not found");
-        }
 
-        setLayout(new BorderLayout());
-
-        currencyContainer = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-
-        JLabel title = new JLabel("Historical Exchange Rates");
-        title.setHorizontalAlignment(JLabel.CENTER);
-        title.setFont(new Font("Arial", Font.BOLD, 16));
-
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.gridwidth = 3; // 5 columns now (extra for star buttons)
-        gbc.insets = new Insets(4, 4, 8, 4);
-        currencyContainer.add(title, gbc);
-
-        // NEW: create fields instead of local variables so we can update them later
+        // Initialize Components
         fromBox = new JComboBox<>();
-        toList = new JList<>();
-        toList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-        toList.setVisibleRowCount(5); // show up to 5 rows before scroll
-        JScrollPane toScroll = new JScrollPane(toList);
+        toBox = new JComboBox<>();
         timePeriodBox = new JComboBox<>(timePeriods);
 
-        // NEW: favourite buttons (same style as in ConvertView)
+        graphBtn = createStyledButton("Graph", PRIMARY_BTN_COLOR, Color.WHITE);
+        backBtn = new JButton("Back to Hub");
+
         favouriteFromBtn = new JButton("★");
         favouriteFromBtn.setMargin(new Insets(2, 6, 2, 6));
         favouriteFromBtn.setToolTipText("Add FROM currency to favourites");
 
         favouriteToBtn = new JButton("★");
         favouriteToBtn.setMargin(new Insets(2, 6, 2, 6));
-        favouriteToBtn.setToolTipText("Add selected TO currencies to favourites");
-
-        gbc.insets = new Insets(2, 4, 2, 4);
-
-        // Row 1: "From" + combo box + star button
-        gbc.gridy = 1;
-        gbc.gridwidth = 1;
-        gbc.weightx = 0;
-        gbc.weighty = 0;
-        gbc.fill = GridBagConstraints.NONE;
-
-        gbc.gridx = 0;
-        currencyContainer.add(new JLabel("From"), gbc);
-
-        gbc.gridx = 1;
-        currencyContainer.add(fromBox, gbc);
-
-        gbc.gridx = 2;
-        currencyContainer.add(favouriteFromBtn, gbc);
-
-        // Row 2: "To" label + scrollable list + star button
-        gbc.gridy = 2;
-
-        gbc.gridx = 0;
-        currencyContainer.add(new JLabel("To (select 1–5)"), gbc);
-
-        gbc.gridx = 1;
-        gbc.fill = GridBagConstraints.BOTH;   // allow the list to grow
-        gbc.weightx = 1.0;
-        gbc.weighty = 1.0;
-        currencyContainer.add(toScroll, gbc);
-
-        gbc.gridx = 2;
-        gbc.fill = GridBagConstraints.NONE;
-        gbc.weightx = 0;
-        gbc.weighty = 0;
-        currencyContainer.add(favouriteToBtn, gbc);
-
-        // Row 3: "Time period" + combo box + Graph button
-        gbc.gridy = 3;
-
-        gbc.gridx = 0;
-        currencyContainer.add(new JLabel("Time period"), gbc);
-
-        gbc.gridx = 1;
-        currencyContainer.add(timePeriodBox, gbc);
-
-        gbc.gridx = 2;
-        graphBtn = new JButton("Graph");
-        graphBtn.setFont(new Font("SansSerif", Font.BOLD, 15));
-        graphBtn.setBackground(new Color(200, 100, 100));
-        currencyContainer.add(graphBtn, gbc);
-
-        add(currencyContainer, BorderLayout.NORTH);
+        favouriteToBtn.setToolTipText("Add TO currency to favourites");
 
         chartContainer = new JPanel(new BorderLayout());
-        chartContainer.add(new JLabel("No Data Available", SwingConstants.CENTER), BorderLayout.CENTER);
-        add(chartContainer, BorderLayout.CENTER);
+        chartContainer.setBackground(PANEL_COLOR);
+        chartContainer.setBorder(BorderFactory.createLineBorder(new Color(229, 231, 235)));
 
-        buttonContainer = new JPanel();
-        backBtn = new JButton("Back to Hub");
-        buttonContainer.add(backBtn);
-        add(buttonContainer, BorderLayout.SOUTH);
-
-        // Populate the dropdowns according to favourites / recent if possible
+        initializeUI();
+        setupListeners();
         updateCurrencyDropdown();
+    }
 
-        backBtn.addActionListener(
-                new ActionListener() {
-                    public void actionPerformed(ActionEvent evt) {
-                        if (trendsController != null) {
-                            trendsController.switchToHome();
-                        }
-                    }
-                }
-        );
+    /**
+     * Sets up the visual layout.
+     */
+    private void initializeUI() {
+        setLayout(new BorderLayout());
+        setBackground(BACKGROUND_COLOR);
 
-        graphBtn.addActionListener(
-                new ActionListener() {
-                    public void actionPerformed(ActionEvent evt) {
-                        String from = (String) fromBox.getSelectedItem();
-                        String period = (String) timePeriodBox.getSelectedItem();
-                        List<String> selectedTargets = toList.getSelectedValuesList();
+        // 1. Header
+        JLabel title = new JLabel("Historical Exchange Rates");
+        title.setHorizontalAlignment(JLabel.CENTER);
+        title.setFont(TITLE_FONT);
+        title.setForeground(TEXT_COLOR);
+        title.setBorder(new EmptyBorder(20, 0, 20, 0));
+        add(title, BorderLayout.NORTH);
 
-                        if (from == null || period == null || selectedTargets.isEmpty()) {
-                            System.out.println("Select base, at least one target, and period");
-                            return;
-                        }
+        // 2. Center Panel (Controls + Chart)
+        JPanel centerPanel = new JPanel(new BorderLayout(0, 20));
+        centerPanel.setBackground(BACKGROUND_COLOR);
+        centerPanel.setBorder(new EmptyBorder(0, 20, 0, 20));
 
-                        java.util.ArrayList<String> filtered = new java.util.ArrayList<>();
-                        for (String t : selectedTargets) {
-                            if (!from.equals(t)) {
-                                filtered.add(t);
-                            }
-                        }
-                        if (filtered.isEmpty()) {
-                            System.out.println("Targets cannot all be the same as base");
-                            return;
-                        }
+        centerPanel.add(createControlPanel(), BorderLayout.NORTH);
 
-                        if (trendsController != null) {
-                            trendsController.execute(from, filtered, period);
-                        }
+        // Generate dummy data for initial view
+        ArrayList<LocalDate> dummyDates = new ArrayList<>();
+        ArrayList<Double> dummyRates = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+        double dummyRate = 1.35;
 
-                        // Also record recent usage for the selected pairs
-                        if (recentCurrencyController != null && homeViewModel != null
-                                && homeViewModel.getState() != null) {
+        // Generate 30 days of random data
+        for (int i = 30; i >= 0; i--) {
+            dummyDates.add(today.minusDays(i));
+            dummyRate += (Math.random() - 0.5) * 0.05; // Random fluctuation
+            dummyRates.add(dummyRate);
+        }
 
-                            String userId = homeViewModel.getState().getUsername();
-                            if (userId != null && !userId.isEmpty()) {
-                                for (String target : filtered) {
-                                    // Record each (from, target) pair as recently used
-                                    recentCurrencyController.execute(userId, from, target);
-                                }
-                            }
-                        }
-                    }
-                }
-        );
+        // Reuse the main chart method with dummy data
+        ChartPanel initialChart = makeChartPanel("Example Base", "Example Target", dummyDates, dummyRates);
+        chartContainer.add(initialChart, BorderLayout.CENTER);
+        // --------------------------------------------------------
 
+        centerPanel.add(chartContainer, BorderLayout.CENTER);
+        add(centerPanel, BorderLayout.CENTER);
 
-        // Listener: favourite FROM currency
-        favouriteFromBtn.addActionListener(e -> {
-            // Guard clauses to avoid NullPointerExceptions
-            if (favouriteCurrencyController == null || homeViewModel == null || homeViewModel.getState() == null) {
-                return;
-            }
-            String userId = homeViewModel.getState().getUsername();
-            Object selected = fromBox.getSelectedItem();
-            if (userId == null || userId.isEmpty() || selected == null) {
-                return;
-            }
-            String currencyCode = selected.toString();
-            // Mark the base currency as favourite for this user
-            favouriteCurrencyController.execute(userId, currencyCode, true);
+        // 3. Bottom Navigation
+        JPanel buttonContainer = new JPanel();
+        buttonContainer.setBackground(BACKGROUND_COLOR);
+        buttonContainer.setBorder(new EmptyBorder(15, 0, 15, 0));
+
+        backBtn.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        backBtn.setFocusPainted(false);
+        buttonContainer.add(backBtn);
+
+        add(buttonContainer, BorderLayout.SOUTH);
+    }
+
+    /**
+     * Creates the control panel for user inputs.
+     */
+    private JPanel createControlPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(PANEL_COLOR);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(229, 231, 235)),
+                new EmptyBorder(15, 15, 15, 15)
+        ));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.anchor = GridBagConstraints.WEST;
+
+        addLabel(panel, "From Currency:", 0, 0, gbc);
+        addComponent(panel, fromBox, 1, 0, gbc, true);
+        addComponent(panel, favouriteFromBtn, 2, 0, gbc, false);
+
+        addLabel(panel, "To Currency:", 0, 1, gbc);
+        addComponent(panel, toBox, 1, 1, gbc, true);
+        addComponent(panel, favouriteToBtn, 2, 1, gbc, false);
+
+        addLabel(panel, "Time Period:", 0, 2, gbc);
+        addComponent(panel, timePeriodBox, 1, 2, gbc, true);
+
+        gbc.gridx = 2;
+        gbc.gridy = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        panel.add(graphBtn, gbc);
+
+        return panel;
+    }
+
+    /**
+     * Configures all action listeners.
+     */
+    private void setupListeners() {
+        backBtn.addActionListener(evt -> {
+            if (trendsController != null) trendsController.switchToHome();
         });
 
-        // Listener: favourite TO currencies (can be multiple)
-        favouriteToBtn.addActionListener(e -> {
-            if (favouriteCurrencyController == null || homeViewModel == null || homeViewModel.getState() == null) {
-                return;
-            }
-            String userId = homeViewModel.getState().getUsername();
-            if (userId == null || userId.isEmpty()) {
-                return;
-            }
-            List<String> selectedTargets = toList.getSelectedValuesList();
-            if (selectedTargets == null || selectedTargets.isEmpty()) {
-                return;
-            }
-            for (String currencyCode : selectedTargets) {
-                // Mark each selected target as favourite for this user
-                favouriteCurrencyController.execute(userId, currencyCode, true);
+        graphBtn.addActionListener(evt -> {
+            String from = String.valueOf(fromBox.getSelectedItem());
+            String to = String.valueOf(toBox.getSelectedItem());
+            String period = (String) timePeriodBox.getSelectedItem();
+
+            if (from != null && to != null) {
+                if (from.equals(to)) {
+                    JOptionPane.showMessageDialog(this, "Please select two different currencies.", "Input Error", JOptionPane.WARNING_MESSAGE);
+                } else {
+                    trendsController.execute(from, to, period);
+                }
             }
         });
 
-        // Ensure currencies are re-ordered whenever this view becomes visible.
-        // At this point the user is already logged in and HomeViewModel
-        // has the correct username, so favourites and recent usage can be applied.
+        favouriteFromBtn.addActionListener(e -> handleFavouriteAction(fromBox.getSelectedItem()));
+        favouriteToBtn.addActionListener(e -> handleFavouriteAction(toBox.getSelectedItem()));
+
         this.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentShown(java.awt.event.ComponentEvent e) {
                 updateCurrencyDropdown();
             }
         });
-
     }
 
-    // Central place to update "from" and "to" according to favourites + recent
-    private void updateCurrencyDropdown() {
-        java.util.List<String> ordered = null;
+    private void handleFavouriteAction(Object selectedItem) {
+        if (favouriteCurrencyController == null || homeViewModel == null || homeViewModel.getState() == null) return;
 
-        // Try to get ordered list from Recent DAO using current user id
-        if (recentDAO != null && homeViewModel != null && homeViewModel.getState() != null) {
-            String userId = homeViewModel.getState().getUsername();
-            if (userId != null && !userId.isEmpty()) {
-                // DAO is responsible for ordering favourites first, then recent, then others
-                ordered = recentDAO.getOrderedCurrenciesForUser(userId);
+        String userId = homeViewModel.getState().getUsername();
+        if (userId == null || userId.isEmpty() || selectedItem == null) return;
+
+        favouriteCurrencyController.execute(userId, selectedItem.toString(), true);
+        JOptionPane.showMessageDialog(this, selectedItem.toString() + " added to favourites!");
+    }
+
+    /**
+     * Generates a JFreeChart panel from raw data lists.
+     * This method is used for both the initial dummy chart and real API data.
+     */
+    private ChartPanel makeChartPanel(String base, String target,
+                                      ArrayList<LocalDate> dates, ArrayList<Double> rates) {
+
+        TimeSeries series = new TimeSeries(base + "/" + target);
+
+        if (dates != null && rates != null) {
+            for (int i = 0; i < dates.size(); i++) {
+                LocalDate d = dates.get(i);
+                Double r = rates.get(i);
+                Day day = new Day(d.getDayOfMonth(), d.getMonthValue(), d.getYear());
+                series.addOrUpdate(day, r);
             }
         }
 
-        // Fallback: if no DAO or no user data, use the full baseCurrencies list
-        if ((ordered == null || ordered.isEmpty()) && baseCurrencies != null && !baseCurrencies.isEmpty()) {
-            ordered = new java.util.ArrayList<>(baseCurrencies);
-        }
-
-        if (ordered == null || ordered.isEmpty()) {
-            return;
-        }
-
-        // Update "from" combo box
-        fromBox.removeAllItems();
-        for (String code : ordered) {
-            fromBox.addItem(code);
-        }
-
-        // Update "to" list with the same ordering
-        DefaultListModel<String> listModel = new DefaultListModel<>();
-        for (String code : ordered) {
-            listModel.addElement(code);
-        }
-        toList.setModel(listModel);
-    }
-
-    private ChartPanel makeChartPanel(TrendsState state) {
         TimeSeriesCollection dataset = new TimeSeriesCollection();
-
-        if (state.getSeriesList() != null) {
-            for (TrendsOutputData.SeriesData seriesData : state.getSeriesList()) {
-                TimeSeries series = new TimeSeries(seriesData.getTargetCurrency());
-                java.util.ArrayList<LocalDate> dates = seriesData.getDates();
-                java.util.ArrayList<Double> values = seriesData.getPercents();
-
-                for (int i = 0; i < dates.size(); i++) {
-                    LocalDate d = dates.get(i);
-                    Double v = values.get(i);
-                    Day day = new Day(d.getDayOfMonth(), d.getMonthValue(), d.getYear());
-                    series.addOrUpdate(day, v);
-                }
-
-                dataset.addSeries(series);
-            }
-        }
+        dataset.addSeries(series);
 
         JFreeChart chart = ChartFactory.createTimeSeriesChart(
-                state.getBaseCurrency() + " vs targets (% change)",
-                "Date",
-                "Percent change (%)",
-                dataset,
-                true,
-                true,
-                false
+                "Exchange Rate: " + base + " to " + target,
+                "Date", "Rate", dataset, true, true, false
         );
 
         XYPlot plot = (XYPlot) chart.getPlot();
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
+        plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
+
         DateAxis axis = (DateAxis) plot.getDomainAxis();
-        axis.setDateFormatOverride(new SimpleDateFormat("dd-MMM"));
+        axis.setDateFormatOverride(new SimpleDateFormat("MMM-dd"));
 
         return new ChartPanel(chart);
     }
 
-    @Override
-    public void actionPerformed(ActionEvent e) {
+    /**
+     * Updates dropdowns based on Recent/Favourite data.
+     */
+    private void updateCurrencyDropdown() {
+        List<String> ordered = null;
+        if (recentDAO != null && homeViewModel != null && homeViewModel.getState() != null) {
+            String userId = homeViewModel.getState().getUsername();
+            if (userId != null && !userId.isEmpty()) {
+                ordered = recentDAO.getOrderedCurrenciesForUser(userId);
+            }
+        }
+
+        if ((ordered == null || ordered.isEmpty()) && baseCurrencies != null) {
+            ordered = new ArrayList<>(baseCurrencies);
+        }
+
+        if (ordered == null || ordered.isEmpty()) return;
+
+        List<String> finalOrdered = ordered;
+        SwingUtilities.invokeLater(() -> {
+            fromBox.removeAllItems();
+            toBox.removeAllItems();
+            for (String code : finalOrdered) {
+                fromBox.addItem(code);
+                toBox.addItem(code);
+            }
+        });
     }
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        TrendsState state = trendsViewModel.getState();
+        if ("state".equals(evt.getPropertyName())) {
+            TrendsState state = (TrendsState) evt.getNewValue();
+            chartContainer.removeAll();
 
-        chartContainer.removeAll();
-
-        if (state.getSeriesList() != null && !state.getSeriesList().isEmpty()) {
-            ChartPanel newChart = makeChartPanel(state);
-            chartContainer.add(newChart, BorderLayout.CENTER);
-        } else {
-            chartContainer.add(new JLabel("No Data Available", SwingConstants.CENTER), BorderLayout.CENTER);
+            if (state.getDates() != null && !state.getDates().isEmpty()) {
+                ChartPanel newChart = makeChartPanel(
+                        state.getBaseCurrency(),
+                        state.getTargetCurrency(),
+                        state.getDates(),
+                        state.getRates()
+                );
+                chartContainer.add(newChart, BorderLayout.CENTER);
+            } else {
+                JLabel noData = new JLabel("No Data Available");
+                noData.setHorizontalAlignment(SwingConstants.CENTER);
+                chartContainer.add(noData, BorderLayout.CENTER);
+            }
+            chartContainer.revalidate();
+            chartContainer.repaint();
         }
-
-        chartContainer.revalidate();
-        chartContainer.repaint();
     }
 
-    public void setTrendsController(TrendsController controller) {
-        this.trendsController = controller;
-    }
+    @Override
+    public void actionPerformed(ActionEvent e) {}
 
-    // Inject favourite currency use case into this view
-    public void setFavouriteCurrencyController(FavouriteCurrencyController controller) {
-        this.favouriteCurrencyController = controller;
-    }
-
+    // --- Dependency Injection ---
+    public void setTrendsController(TrendsController controller) { this.trendsController = controller; }
+    public void setFavouriteCurrencyController(FavouriteCurrencyController controller) { this.favouriteCurrencyController = controller; }
     public void setFavouriteCurrencyViewModel(FavouriteCurrencyViewModel vm) {
         this.favouriteCurrencyViewModel = vm;
-        if (this.favouriteCurrencyViewModel != null) {
-            // When favourites change, refresh the dropdown ordering
-            this.favouriteCurrencyViewModel.addPropertyChangeListener(evt -> updateCurrencyDropdown());
-        }
+        if (this.favouriteCurrencyViewModel != null) this.favouriteCurrencyViewModel.addPropertyChangeListener(evt -> updateCurrencyDropdown());
     }
-
-    // Inject recent currency use case into this view
-    public void setRecentCurrencyController(RecentCurrencyController controller) {
-        this.recentCurrencyController = controller;
-    }
-
+    public void setRecentCurrencyController(RecentCurrencyController controller) { this.recentCurrencyController = controller; }
     public void setRecentCurrencyViewModel(RecentCurrencyViewModel vm) {
         this.recentCurrencyViewModel = vm;
-        if (this.recentCurrencyViewModel != null) {
-            // When recent data changes, refresh the dropdown ordering
-            this.recentCurrencyViewModel.addPropertyChangeListener(evt -> updateCurrencyDropdown());
-        }
+        if (this.recentCurrencyViewModel != null) this.recentCurrencyViewModel.addPropertyChangeListener(evt -> updateCurrencyDropdown());
     }
-
     public void setRecentCurrencyDAO(RecentCurrencyDataAccessInterface dao) {
         this.recentDAO = dao;
-        // Refresh immediately when DAO is first injected
         updateCurrencyDropdown();
     }
+    public String getViewName() { return this.viewName; }
 
-    public String getViewName() {
-        return this.viewName;
+    // --- Helper Methods ---
+    private void addLabel(JPanel panel, String text, int x, int y, GridBagConstraints gbc) {
+        gbc.gridx = x; gbc.gridy = y; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
+        JLabel label = new JLabel(text);
+        label.setFont(LABEL_FONT);
+        panel.add(label, gbc);
     }
+    private void addComponent(JPanel panel, JComponent comp, int x, int y, GridBagConstraints gbc, boolean grow) {
+        gbc.gridx = x; gbc.gridy = y; gbc.weightx = grow ? 1.0 : 0; gbc.fill = grow ? GridBagConstraints.HORIZONTAL : GridBagConstraints.NONE;
+        panel.add(comp, gbc);
+    }
+    private JButton createStyledButton(String text, Color bg, Color fg) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setOpaque(true);
+        btn.setBorderPainted(false);
+        btn.setBackground(bg);
+        btn.setForeground(fg);
+        btn.setFocusPainted(false);
+        btn.setBorder(new EmptyBorder(8, 15, 8, 15));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
+
 }
