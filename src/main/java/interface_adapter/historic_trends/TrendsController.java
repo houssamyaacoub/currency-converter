@@ -18,6 +18,10 @@ public class TrendsController {
         interactor.execute(inputData);
     }
 
+    public void executeInitialLoad() {
+        interactor.executeInitialLoad();
+    }
+
     public void switchToHome() {
         interactor.switchToHomeView();
     }

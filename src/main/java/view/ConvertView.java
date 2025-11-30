@@ -12,9 +12,9 @@ import interface_adapter.convert_currency.ConvertViewModel;
 import interface_adapter.favourite_currency.FavouriteCurrencyController;
 import interface_adapter.favourite_currency.FavouriteCurrencyViewModel;
 
+import interface_adapter.load_currencies.LoadCurrenciesController;
 import interface_adapter.recent_currency.RecentCurrencyController;
 import interface_adapter.recent_currency.RecentCurrencyViewModel;
-import use_case.recent_currency.RecentCurrencyDataAccessInterface;
 
 import interface_adapter.logged_in.HomeViewModel;
 
@@ -26,8 +26,8 @@ import java.awt.event.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -40,7 +40,6 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     public final String viewName = "convert";
 
     private final ConvertViewModel viewModel;
-    private final java.util.List<String> baseCurrencies;
     private final HomeViewModel homeViewModel;
 
     private ConvertController convertController;
@@ -48,9 +47,8 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     private FavouriteCurrencyViewModel favouriteCurrencyViewModel;
     private FavouriteCurrencyController favouriteCurrencyController;
     private RecentCurrencyController recentCurrencyController;
-    private RecentCurrencyDataAccessInterface recentDAO;
 
-    // NEW: controller for Use Case 6 (multi-currency compare)
+    private LoadCurrenciesController loadCurrenciesController;
     private CompareCurrenciesController compareCurrenciesController;
 
     // UI Components
@@ -73,11 +71,9 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
     public ConvertView(ViewManagerModel viewManagerModel,
                        ConvertViewModel viewModel,
-                       java.util.List<String> baseCurrencies,
                        HomeViewModel homeViewModel) {
 
         this.viewModel = viewModel;
-        this.baseCurrencies = baseCurrencies;
         this.homeViewModel = homeViewModel;
 
         this.viewModel.addPropertyChangeListener(this);
@@ -135,7 +131,6 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         gbc.gridx = 1; gbc.gridy = 3; gbc.gridwidth = 1;
         add(convertBtn, gbc);
 
-        // NEW button for use case 6
         compareMultipleBtn = new JButton("Compare Multiple");
         compareMultipleBtn.setFont(new Font("SansSerif", Font.PLAIN, 13));
         compareMultipleBtn.setBackground(new Color(180, 200, 255));
@@ -259,14 +254,15 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
         // --- Show-time hook: whenever this view becomes visible, refresh dropdown ---
 
-        this.addComponentListener(new ComponentAdapter() {
+        this.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
-            public void componentShown(ComponentEvent e) {
-                updateCurrencyDropdown();
+            public void componentShown(java.awt.event.ComponentEvent e) {
+                // If the list is empty, trigger the load use case
+                if (fromBox.getItemCount() == 0 && loadCurrenciesController != null) {
+                    loadCurrenciesController.execute();
+                }
             }
         });
-
-        // --- NEW: Compare Multiple button behaviour ---
 
         compareMultipleBtn.addActionListener(e -> {
             if (compareCurrenciesController == null) {
@@ -325,9 +321,15 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         }
     }
 
-    // --- Helper: open the "selection page" for multiple compare, with checkboxes ---
-
     private void openMultiCompareDialog(String baseCurrency) {
+
+        String[] availableCurrencies = viewModel.getState().getCurrencyCodes();
+
+        if (availableCurrencies == null || availableCurrencies.length == 0) {
+            JOptionPane.showMessageDialog(this, "Currency list not loaded.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout(5, 5));
 
@@ -339,11 +341,8 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
         List<JCheckBox> boxes = new ArrayList<>();
 
-        for (String code : baseCurrencies) {
-            // Optionally skip the base currency itself
-            if (code.equals(baseCurrency)) {
-                continue;
-            }
+        for (String code : availableCurrencies) {
+            if (code.equals(baseCurrency)) continue;
 
             JCheckBox cb = new JCheckBox(code);
             boxes.add(cb);
@@ -393,7 +392,6 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         compareCurrenciesController.execute(baseCurrency, selectedTargets);
     }
 
-    // --- Helper: show the bar chart popup for the multi-compare results ---
 
     private void showComparisonChart(String baseCurrency,
                                      List<String> targets,
@@ -450,6 +448,11 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         // Single-conversion display (old behaviour)
+
+        if ("currencyListLoaded".equals(evt.getPropertyName())) {
+            updateCurrencyDropdown();
+        }
+
         ConvertState state = viewModel.getState();
 
         if (state.getError() != null) {
@@ -470,7 +473,6 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
             }
         }
 
-        // NEW: check if the compare use case has populated extra data
         if (state.getCompareTargets() != null
                 && !state.getCompareTargets().isEmpty()
                 && state.getCompareRates() != null
@@ -496,6 +498,10 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         this.convertController = convertController;
     }
 
+    public void setLoadCurrenciesController(LoadCurrenciesController controller) {
+        this.loadCurrenciesController = controller;
+    }
+
     public void setFavouriteCurrencyController(FavouriteCurrencyController controller) {
         this.favouriteCurrencyController = controller;
     }
@@ -504,10 +510,6 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         this.recentCurrencyController = controller;
     }
 
-    public void setRecentCurrencyDAO(RecentCurrencyDataAccessInterface dao) {
-        this.recentDAO = dao;
-        updateCurrencyDropdown();
-    }
 
     public void setRecentCurrencyViewModel(RecentCurrencyViewModel viewModel) {
         this.recentCurrencyViewModel = viewModel;
@@ -524,27 +526,19 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     }
 
     private void updateCurrencyDropdown() {
-        java.util.List<String> ordered = null;
+        String[] codes = viewModel.getState().getCurrencyCodes();
 
-        if (recentDAO != null && homeViewModel != null && homeViewModel.getState() != null) {
-            String userId = homeViewModel.getState().getUsername();
-            if (userId != null && !userId.isEmpty()) {
-                ordered = recentDAO.getOrderedCurrenciesForUser(userId);
-            }
-        }
-
-        if ((ordered == null || ordered.isEmpty()) && baseCurrencies != null) {
-            ordered = baseCurrencies;
-        }
-
-        if (ordered == null || ordered.isEmpty()) {
-            return;
-        }
+        if (codes == null || codes.length == 0) return;
 
         fromBox.removeAllItems();
         toBox.removeAllItems();
 
-        for (String code : ordered) {
+        // IMPLEMENTING ITERATOR PATTERN
+        java.util.List<String> codeList = java.util.Arrays.asList(codes);
+        Iterator<String> iterator = codeList.iterator();
+
+        while (iterator.hasNext()) {
+            String code = iterator.next();
             fromBox.addItem(code);
             toBox.addItem(code);
         }

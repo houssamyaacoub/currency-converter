@@ -17,7 +17,6 @@ public class ConvertState {
     private String rateDetails = "Rate: N/A";
     private String error = null;
 
-    // NEW: data for multi-currency compare
     private List<String> compareTargets = new ArrayList<>();
     private List<Double> compareRates = new ArrayList<>();
 
@@ -55,7 +54,6 @@ public class ConvertState {
     public void setRateDetails(String rateDetails) { this.rateDetails = rateDetails; }
     public void setError(String error) { this.error = error; }
 
-    // === NEW for multi compare ===
 
     public List<String> getCompareTargets() {
         return compareTargets;

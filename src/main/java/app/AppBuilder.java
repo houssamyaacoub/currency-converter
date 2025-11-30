@@ -7,6 +7,9 @@ import entity.UserFactory;
 import interface_adapter.ViewManagerModel;
 import interface_adapter.compare_currencies.CompareCurrenciesController;
 import interface_adapter.compare_currencies.CompareCurrenciesPresenter;
+import interface_adapter.load_currencies.LoadCurrenciesController;
+import interface_adapter.load_currencies.LoadCurrenciesPresenter;
+import interface_adapter.load_currencies.LoadCurrenciesViewModel;
 import use_case.compare_currencies.CompareCurrenciesInputBoundary;
 import use_case.compare_currencies.CompareCurrenciesInteractor;
 import use_case.compare_currencies.CompareCurrenciesOutputBoundary;
@@ -28,7 +31,6 @@ import interface_adapter.signup.SignupController;
 import interface_adapter.signup.SignupPresenter;
 import interface_adapter.signup.SignupViewModel;
 import use_case.convert.ExchangeRateDataAccessInterface;
-import use_case.convert.CurrencyRepository;
 import use_case.change_password.ChangePasswordInputBoundary;
 import use_case.change_password.ChangePasswordInteractor;
 import use_case.change_password.ChangePasswordOutputBoundary;
@@ -36,6 +38,9 @@ import use_case.convert.*;
 import use_case.historic_trends.TrendsInputBoundary;
 import use_case.historic_trends.TrendsInteractor;
 import use_case.historic_trends.TrendsOutputBoundary;
+import use_case.load_currencies.LoadCurrenciesInputBoundary;
+import use_case.load_currencies.LoadCurrenciesInteractor;
+import use_case.load_currencies.LoadCurrenciesOutputBoundary;
 import use_case.login.LoginInputBoundary;
 import use_case.login.LoginInteractor;
 import use_case.login.LoginOutputBoundary;
@@ -49,6 +54,7 @@ import view.*;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.ArrayList;
 
 public class AppBuilder {
     private final JPanel cardPanel = new JPanel();
@@ -70,29 +76,40 @@ public class AppBuilder {
     private HomeViewModel homeViewModel;
     private TrendsViewModel trendsViewModel;
     private ConvertViewModel convertViewModel;
+    private LoadCurrenciesViewModel loadCurrenciesViewModel;
     private HomeView homeView;
     private LoginView loginView;
     private TrendsView trendsView;
-    // NEW: store full currency list so all views can use it
-    private java.util.List<String> baseCurrencies;
-
     private ConvertView convertView;
     private final ExchangeRateDataAccessInterface dataAccess = new ExchangeRateHostDAO(currencyRepository);
-    // Shared DAO for favourites so all use cases see the same in-memory data.
-    //private data_access.FavouriteCurrencyFileDataAccessObject favouriteDAO;
-
-
-
 
     public AppBuilder() {
         cardPanel.setLayout(cardLayout);
         this.viewManager = new ViewManager(cardPanel, cardLayout, viewManagerModel);
-        // NEW: initialize baseCurrencies once, so all views can use it
-        baseCurrencies = new java.util.ArrayList<>();
-        for (entity.Currency c : currencyRepository.getAllCurrencies()) {
-            // Use the same display string as in ConvertView (currently currency name)
-            baseCurrencies.add(c.getName());
-        }
+    }
+
+    public AppBuilder addLoadCurrenciesUseCase() {
+        // 1. Ensure the DAO is ready (fetches from API if file missing)
+        currencyRepository.fetchAndWriteToFile();
+
+        // 2. Wire the Use Case
+        final LoadCurrenciesOutputBoundary loadPresenter =
+                new LoadCurrenciesPresenter(convertViewModel, trendsViewModel, loadCurrenciesViewModel);
+
+        final LoadCurrenciesInputBoundary loadInteractor =
+                new LoadCurrenciesInteractor(currencyRepository, loadPresenter);
+
+        final LoadCurrenciesController loadController =
+                new LoadCurrenciesController(loadInteractor);
+
+        trendsView.setLoadCurrenciesController(loadController);
+
+        convertView.setLoadCurrenciesController(loadController);
+
+        // 3. TRIGGER THE LOAD IMMEDIATELY
+        loadController.execute();
+
+        return this;
     }
 
     public AppBuilder addSignupView() {
@@ -118,22 +135,18 @@ public class AppBuilder {
 
     public AppBuilder addTrendsView() {
         trendsViewModel = new TrendsViewModel();
-        // NEW: pass homeViewModel so TrendsView can read current username
-        trendsView = new TrendsView(trendsViewModel, homeViewModel, baseCurrencies);
+        trendsView = new TrendsView(trendsViewModel, homeViewModel);
         cardPanel.add(trendsView, trendsView.getViewName());
         return this;
     }
 
-
     public AppBuilder addConvertView() {
         convertViewModel = new ConvertViewModel();
+        loadCurrenciesViewModel = new LoadCurrenciesViewModel();
 
-        convertView = new ConvertView(viewManagerModel, convertViewModel, baseCurrencies, homeViewModel);
-
-
+        convertView = new ConvertView(viewManagerModel, convertViewModel, homeViewModel);
         cardPanel.add(convertView, convertView.getViewName());
-        return this;
-    }
+        return this;    }
 
     public AppBuilder addConvertUseCase() {
         // Single-conversion use case (existing)
@@ -157,7 +170,6 @@ public class AppBuilder {
 
         return this;
     }
-
 
     public AppBuilder addSignupUseCase() {
         final SignupOutputBoundary signupOutputBoundary = new SignupPresenter(viewManagerModel,
@@ -218,7 +230,6 @@ public class AppBuilder {
         return this;
     }
 
-
     public AppBuilder addFavouriteCurrencyUseCase() {
 
         // ViewModel and Presenter
@@ -246,7 +257,6 @@ public class AppBuilder {
         convertView.setFavouriteCurrencyController(favouriteController);
         convertView.setFavouriteCurrencyViewModel(favouriteVM);
 
-        // NEW: also inject into TrendsView so it can refresh ordering when favourites change
         if (trendsView != null) {
             trendsView.setFavouriteCurrencyController(favouriteController);
             trendsView.setFavouriteCurrencyViewModel(favouriteVM);
@@ -255,49 +265,35 @@ public class AppBuilder {
         return this;
     }
 
-
-
     public AppBuilder addRecentCurrencyUseCase() {
 
-        // Use FileUserDataAccessObject directly as the Recent DAO
         final use_case.recent_currency.RecentCurrencyDataAccessInterface recentDAO =
                 (use_case.recent_currency.RecentCurrencyDataAccessInterface) userDataAccessObject;
 
-        // 3. VM + Presenter
         final interface_adapter.recent_currency.RecentCurrencyViewModel recentVM =
                 new interface_adapter.recent_currency.RecentCurrencyViewModel();
         final interface_adapter.recent_currency.RecentCurrencyPresenter recentPresenter =
                 new interface_adapter.recent_currency.RecentCurrencyPresenter(recentVM);
 
-        // 4. Interactor
         final use_case.recent_currency.RecentCurrencyInputBoundary recentInteractor =
                 new use_case.recent_currency.RecentCurrencyInteractor(
                         recentDAO,
                         recentPresenter
                 );
 
-        // 5. Controller
         final interface_adapter.recent_currency.RecentCurrencyController recentController =
                 new interface_adapter.recent_currency.RecentCurrencyController(recentInteractor);
 
-        // 6. Inject into ConvertView
-        convertView.setRecentCurrencyDAO(recentDAO);
         convertView.setRecentCurrencyViewModel(recentVM);
         convertView.setRecentCurrencyController(recentController);
 
-        // NEW: also inject into TrendsView so "From"/"To" ordering and Graph clicks update recent
         if (trendsView != null) {
-            trendsView.setRecentCurrencyDAO(recentDAO);
             trendsView.setRecentCurrencyViewModel(recentVM);
             trendsView.setRecentCurrencyController(recentController);
         }
 
         return this;
     }
-
-
-
-
 
     public JFrame build() {
         final JFrame application = new JFrame("Currency Converter");
@@ -310,6 +306,5 @@ public class AppBuilder {
 
         return application;
     }
-
 
 }

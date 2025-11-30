@@ -14,18 +14,21 @@ public class APP {
 
             // Execute the builder chain
             JFrame application = builder
-                    .addHomeView()
-                    .addSignupView()
                     .addLoginView()
+                    .addSignupView()
+                    .addHomeView()
                     .addConvertView()
                     .addTrendsView()
                     .addSignupUseCase()
+                    .addLoadCurrenciesUseCase()
                     .addLoginUseCase()
                     .addLogoutUseCase()
                     .addChangePasswordUseCase()
                     .addTrendsUseCase()
+                    .addFavouriteCurrencyUseCase()
+                    .addRecentCurrencyUseCase()
                     .addConvertUseCase()
-                    .build(); // Builds and configures the JFrame
+                    .build();
 
             application.pack();
             application.setLocationRelativeTo(null);

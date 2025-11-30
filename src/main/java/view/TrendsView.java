@@ -3,6 +3,7 @@ package view;
 import interface_adapter.historic_trends.TrendsState;
 import interface_adapter.historic_trends.TrendsViewModel;
 import interface_adapter.historic_trends.TrendsController;
+import interface_adapter.load_currencies.LoadCurrenciesController;
 import use_case.historic_trends.TrendsOutputData;
 
 import org.jfree.chart.ChartFactory;
@@ -22,6 +23,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.util.Iterator;
 import java.util.List;
 
 // NEW: imports for home / favourite / recent
@@ -30,7 +32,6 @@ import interface_adapter.favourite_currency.FavouriteCurrencyController;
 import interface_adapter.favourite_currency.FavouriteCurrencyViewModel;
 import interface_adapter.recent_currency.RecentCurrencyController;
 import interface_adapter.recent_currency.RecentCurrencyViewModel;
-import use_case.recent_currency.RecentCurrencyDataAccessInterface;
 
 public class TrendsView extends JPanel implements ActionListener, PropertyChangeListener {
     public final String viewName = "trends";
@@ -44,21 +45,15 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
     private final JButton backBtn;
     private final JButton graphBtn;
 
-    // NEW: full currency list passed from AppBuilder (same as ConvertView)
-    private final java.util.List<String> baseCurrencies;
-
     private final String[] timePeriods = {"1 week", "1 month", "6 months", "1 year"};
 
-    // NEW: store the combo boxes and list as fields (not local variables)
     private final JComboBox<String> fromBox;
     private final JList<String> toList;
     private final JComboBox<String> timePeriodBox;
 
-    // NEW: star buttons to allow adding favourites from this view
     private final JButton favouriteFromBtn;
     private final JButton favouriteToBtn;
 
-    // NEW: references needed to reuse favourites / recent logic
     private final HomeViewModel homeViewModel;
 
     private FavouriteCurrencyController favouriteCurrencyController;
@@ -66,16 +61,14 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
 
     private RecentCurrencyController recentCurrencyController;
     private RecentCurrencyViewModel recentCurrencyViewModel;
-    private RecentCurrencyDataAccessInterface recentDAO;
 
-    // NEW: constructor now also receives HomeViewModel and baseCurrencies
-    public TrendsView(TrendsViewModel trendsViewModel,
-                      HomeViewModel homeViewModel,
-                      java.util.List<String> baseCurrencies) {
+    private LoadCurrenciesController loadCurrenciesController;
+
+    public TrendsView(TrendsViewModel trendsViewModel, HomeViewModel homeViewModel) {
         this.trendsViewModel = trendsViewModel;
         this.homeViewModel = homeViewModel;
-        this.baseCurrencies = baseCurrencies; // store full list for fallback
         this.trendsViewModel.addPropertyChangeListener(this);
+
         try {
             UIManager.setLookAndFeel("javax.swing.plaf.metal.MetalLookAndFeel");
         } catch (Exception e) {
@@ -97,7 +90,6 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
         gbc.insets = new Insets(4, 4, 8, 4);
         currencyContainer.add(title, gbc);
 
-        // NEW: create fields instead of local variables so we can update them later
         fromBox = new JComboBox<>();
         toList = new JList<>();
         toList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
@@ -105,7 +97,6 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
         JScrollPane toScroll = new JScrollPane(toList);
         timePeriodBox = new JComboBox<>(timePeriods);
 
-        // NEW: favourite buttons (same style as in ConvertView)
         favouriteFromBtn = new JButton("★");
         favouriteFromBtn.setMargin(new Insets(2, 6, 2, 6));
         favouriteFromBtn.setToolTipText("Add FROM currency to favourites");
@@ -268,49 +259,41 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
             }
         });
 
-        // Ensure currencies are re-ordered whenever this view becomes visible.
-        // At this point the user is already logged in and HomeViewModel
-        // has the correct username, so favourites and recent usage can be applied.
         this.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentShown(java.awt.event.ComponentEvent e) {
-                updateCurrencyDropdown();
+                // If data isn't loaded yet, trigger it
+                if (fromBox.getItemCount() == 0 && loadCurrenciesController != null) {
+                    loadCurrenciesController.execute();
+                } else {
+                    // Ensure dropdown is consistent if we switch back and forth
+                    updateCurrencyDropdown();
+                }
             }
         });
 
     }
 
-    // Central place to update "from" and "to" according to favourites + recent
+    public void setLoadCurrenciesController(LoadCurrenciesController controller) {
+        this.loadCurrenciesController = controller;
+    }
+
     private void updateCurrencyDropdown() {
-        java.util.List<String> ordered = null;
+        // Get data from the ViewModel (The single source of truth for the UI)
+        String[] codes = trendsViewModel.getState().getCurrencyCodes();
 
-        // Try to get ordered list from Recent DAO using current user id
-        if (recentDAO != null && homeViewModel != null && homeViewModel.getState() != null) {
-            String userId = homeViewModel.getState().getUsername();
-            if (userId != null && !userId.isEmpty()) {
-                // DAO is responsible for ordering favourites first, then recent, then others
-                ordered = recentDAO.getOrderedCurrenciesForUser(userId);
-            }
-        }
+        if (codes == null || codes.length == 0) return;
 
-        // Fallback: if no DAO or no user data, use the full baseCurrencies list
-        if ((ordered == null || ordered.isEmpty()) && baseCurrencies != null && !baseCurrencies.isEmpty()) {
-            ordered = new java.util.ArrayList<>(baseCurrencies);
-        }
-
-        if (ordered == null || ordered.isEmpty()) {
-            return;
-        }
-
-        // Update "from" combo box
         fromBox.removeAllItems();
-        for (String code : ordered) {
-            fromBox.addItem(code);
-        }
-
-        // Update "to" list with the same ordering
         DefaultListModel<String> listModel = new DefaultListModel<>();
-        for (String code : ordered) {
+
+        // ITERATOR PATTERN implementation
+        List<String> codeList = java.util.Arrays.asList(codes);
+        Iterator<String> iterator = codeList.iterator();
+
+        while (iterator.hasNext()) {
+            String code = iterator.next();
+            fromBox.addItem(code);
             listModel.addElement(code);
         }
         toList.setModel(listModel);
@@ -359,19 +342,25 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        TrendsState state = trendsViewModel.getState();
 
-        chartContainer.removeAll();
-
-        if (state.getSeriesList() != null && !state.getSeriesList().isEmpty()) {
-            ChartPanel newChart = makeChartPanel(state);
-            chartContainer.add(newChart, BorderLayout.CENTER);
-        } else {
-            chartContainer.add(new JLabel("No Data Available", SwingConstants.CENTER), BorderLayout.CENTER);
+        if ("currencyListLoaded".equals(evt.getPropertyName())) {
+            updateCurrencyDropdown();
         }
+        if (evt.getSource() == trendsViewModel) {
+            TrendsState state = trendsViewModel.getState();
 
-        chartContainer.revalidate();
-        chartContainer.repaint();
+            chartContainer.removeAll();
+
+            if (state.getSeriesList() != null && !state.getSeriesList().isEmpty()) {
+                ChartPanel newChart = makeChartPanel(state);
+                chartContainer.add(newChart, BorderLayout.CENTER);
+            } else {
+                chartContainer.add(new JLabel("No Data Available", SwingConstants.CENTER), BorderLayout.CENTER);
+            }
+
+            chartContainer.revalidate();
+            chartContainer.repaint();
+        }
     }
 
     public void setTrendsController(TrendsController controller) {
@@ -402,12 +391,6 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
             // When recent data changes, refresh the dropdown ordering
             this.recentCurrencyViewModel.addPropertyChangeListener(evt -> updateCurrencyDropdown());
         }
-    }
-
-    public void setRecentCurrencyDAO(RecentCurrencyDataAccessInterface dao) {
-        this.recentDAO = dao;
-        // Refresh immediately when DAO is first injected
-        updateCurrencyDropdown();
     }
 
     public String getViewName() {

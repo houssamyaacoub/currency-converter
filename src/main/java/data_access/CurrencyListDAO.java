@@ -10,10 +10,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,9 +20,9 @@ import java.util.regex.Pattern;
  */
 public class CurrencyListDAO implements CurrencyRepository {
 
-    private static final String FILE_PATH = "symbols.json";
+    private static final String FILE_PATH = "symbols.txt";
     private static final String SYMBOLS_URL = "https://api.exchangeratesapi.io/v1/symbols";
-    private static final String API_KEY = "2ff60cc320a08a2913da1c7390ff4dc8";
+    private static final String API_KEY = "ceabe15abf8856037c2f9dd179fa164d";
 
     private final Map<String, Currency> currencyCache = new HashMap<>();
     private final HttpClient httpClient = HttpClient.newHttpClient();
@@ -42,7 +39,6 @@ public class CurrencyListDAO implements CurrencyRepository {
             fetchAndWriteToFile();
         }
     }
-    // --- PART 1: Public Fetch/Write Method (Executed once for setup) ---
 
     /**
      * Fetches the currency list from the external API and writes it to the local file.
@@ -169,6 +165,12 @@ public class CurrencyListDAO implements CurrencyRepository {
         // This is a synchronous read from the cache built by loadCurrenciesFromFile()
         return new ArrayList<>(currencyCache.values());
     }
+
+    @Override
+    public Iterator<Currency> getCurrencyIterator() {
+        return currencyCache.values().iterator();
+    }
+
     /**
      * Decode unicode escape sequences like "\\u00e3" into real characters (ã).
      */
@@ -191,6 +193,5 @@ public class CurrencyListDAO implements CurrencyRepository {
         }
         return sb.toString();
     }
-
 
 }

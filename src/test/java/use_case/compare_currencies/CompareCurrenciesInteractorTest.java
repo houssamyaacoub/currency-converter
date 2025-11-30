@@ -40,6 +40,11 @@ class CompareCurrenciesInteractorTest {
         }
 
         @Override
+        public Iterator<Currency> getCurrencyIterator() {
+            return byName.values().iterator();
+        }
+
+        @Override
         public List<Currency> getAllCurrencies() {
             return new ArrayList<>(byName.values());
         }

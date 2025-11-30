@@ -4,4 +4,5 @@ public interface TrendsInputBoundary {
 
     void execute(TrendsInputData trendsInputData);
     void switchToHomeView();
+    void executeInitialLoad();
 }

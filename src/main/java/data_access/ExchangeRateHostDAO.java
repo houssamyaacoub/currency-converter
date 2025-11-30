@@ -14,8 +14,6 @@ import java.net.http.HttpResponse;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -26,13 +24,10 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
 
 
     private static final String BASE_URL = "https://api.exchangeratesapi.io/latest";
-    private static final String API_KEY = "373df752d259d08cec2a39718fa44cc5";
+    private static final String API_KEY = "ceabe15abf8856037c2f9dd179fa164d";
 
     private final HttpClient httpClient;
-
     private final CurrencyRepository currencyLookup;
-
-
 
     public ExchangeRateHostDAO(CurrencyRepository currencyLookup) {
         this.httpClient = HttpClient.newHttpClient();
@@ -141,10 +136,7 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
         }
 
 
-        // --- CRITICAL FIX HERE ---
-
         // If neither comma nor brace is found, we are at the end of the string.
-
         // Use string length as the end index.
 
         if (rateEnd == -1) {
@@ -164,8 +156,6 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
         List<CurrencyConversion> resultList = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-        // We shouldn't make 365 API calls for a year. It's too many calls
-        // If range > 60 days, fetch weekly. Otherwise, fetch daily.
         long daysBetween = ChronoUnit.DAYS.between(start, end);
         int step;
         if(daysBetween > 364) { // year
