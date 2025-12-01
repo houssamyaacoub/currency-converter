@@ -3,6 +3,7 @@ package use_case.convert;
 import entity.Currency;
 
 import java.util.List;
+import java.util.Iterator;
 
 /**
  * Repository Gateway (Port) for accessing Currency Entities.
@@ -14,4 +15,5 @@ public interface CurrencyRepository {
     Currency getByCode(String code); // Renamed method for clarity
     List<Currency> getAllCurrencies(); // Ensure this method is in the interface
     Currency getByName(String name);
+    Iterator<Currency> getCurrencyIterator();
 }
