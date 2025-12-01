@@ -374,6 +374,14 @@ public class AppBuilder {
         final interface_adapter.recent_currency.RecentCurrencyPresenter recentPresenter =
                 new interface_adapter.recent_currency.RecentCurrencyPresenter(recentVM);
 
+        if (convertView != null) {
+            convertView.setRecentCurrencyDAO(recentDAO);
+        }
+        if (trendsView != null) {
+            trendsView.setRecentCurrencyDAO(recentDAO);
+        }
+
+
         // 4. Interactor
         final use_case.recent_currency.RecentCurrencyInputBoundary recentInteractor =
                 new use_case.recent_currency.RecentCurrencyInteractor(
