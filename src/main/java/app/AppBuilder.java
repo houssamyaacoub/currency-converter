@@ -7,6 +7,13 @@ import entity.UserFactory;
 import interface_adapter.ViewManagerModel;
 import interface_adapter.compare_currencies.CompareCurrenciesController;
 import interface_adapter.compare_currencies.CompareCurrenciesPresenter;
+import interface_adapter.travel_budget.TravelBudgetViewModel;
+import use_case.travel_budget.*;
+
+import interface_adapter.travel_budget.TravelBudgetController;
+import interface_adapter.travel_budget.TravelBudgetPresenter;
+import interface_adapter.travel_budget.TravelBudgetViewModel;
+
 import use_case.compare_currencies.CompareCurrenciesInputBoundary;
 import use_case.compare_currencies.CompareCurrenciesInteractor;
 import use_case.compare_currencies.CompareCurrenciesOutputBoundary;
@@ -76,6 +83,10 @@ public class AppBuilder {
     // NEW: store full currency list so all views can use it
     private java.util.List<String> baseCurrencies;
 
+    private TravelBudgetViewModel travelBudgetViewModel;
+    private TravelBudgetView travelBudgetView;
+
+
     private ConvertView convertView;
     private final ExchangeRateDataAccessInterface dataAccess = new ExchangeRateHostDAO(currencyRepository);
     // Shared DAO for favourites so all use cases see the same in-memory data.
@@ -120,6 +131,31 @@ public class AppBuilder {
         trendsViewModel = new TrendsViewModel();
         trendsView = new TrendsView(trendsViewModel, homeViewModel, baseCurrencies);
         cardPanel.add(trendsView, trendsView.getViewName());
+        return this;
+    }
+
+    public AppBuilder addTravelBudgetView() {
+        travelBudgetViewModel = new TravelBudgetViewModel();
+        travelBudgetView = new TravelBudgetView(viewManagerModel, travelBudgetViewModel, baseCurrencies);
+        cardPanel.add(travelBudgetView, travelBudgetView.getViewName());
+        return this;
+    }
+
+    public AppBuilder addTravelBudgetUseCase() {
+        TravelBudgetOutputBoundary presenter =
+                new TravelBudgetPresenter(viewManagerModel, travelBudgetViewModel);
+
+        TravelBudgetInputBoundary interactor =
+                new TravelBudgetInteractor(dataAccess, currencyRepository, presenter);
+
+        TravelBudgetController controller =
+                new TravelBudgetController(interactor);
+
+        travelBudgetView.setTravelBudgetController(controller);
+
+        // give HomeView a way to open this screen (you'll add a button there)
+        homeView.setTravelBudgetController(controller);
+
         return this;
     }
 

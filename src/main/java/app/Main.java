@@ -11,6 +11,7 @@ public class Main {
                 .addHomeView()
                 .addTrendsView()
                 .addConvertView()
+                .addTravelBudgetView()
                 .addSignupUseCase()
                 .addLoginUseCase()
                 .addLogoutUseCase()
@@ -18,6 +19,7 @@ public class Main {
                 .addTrendsUseCase()
                 .addFavouriteCurrencyUseCase()
                 .addRecentCurrencyUseCase()
+                .addTravelBudgetUseCase()
                 .addConvertUseCase()
                 .build();
 
