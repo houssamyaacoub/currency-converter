@@ -39,4 +39,6 @@ public interface TrendsOutputBoundary {
      * Presenter (and subsequently the ViewManager) to change the active view.
      */
     void prepareHomeView();
+    void prepareInitialView();
+
 }

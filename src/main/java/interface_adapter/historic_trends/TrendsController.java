@@ -19,6 +19,11 @@ public class TrendsController {
         trendsUseCaseInteractor.execute(inputData);
     }
 
+    public void executeInitialLoad() {
+        trendsUseCaseInteractor.executeInitialLoad();
+    }
+
+
     // Back Button
     public void switchToHome() {
         trendsUseCaseInteractor.switchToHomeView();

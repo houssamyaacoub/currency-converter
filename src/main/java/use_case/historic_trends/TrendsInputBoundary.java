@@ -27,4 +27,7 @@ public interface TrendsInputBoundary {
      * which then delegates the actual view switching to the Presenter.
      */
     void switchToHomeView();
+
+    void executeInitialLoad();
+
 }

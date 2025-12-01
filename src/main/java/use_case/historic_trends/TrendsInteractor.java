@@ -131,4 +131,9 @@ public class TrendsInteractor implements TrendsInputBoundary {
     public void switchToHomeView() {
         trendsPresenter.prepareHomeView();
     }
+
+    @Override
+    public void executeInitialLoad() {
+        trendsPresenter.prepareInitialView();
+    }
 }

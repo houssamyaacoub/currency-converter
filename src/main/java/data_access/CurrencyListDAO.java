@@ -2,6 +2,7 @@ package data_access;
 
 import use_case.convert.CurrencyRepository;
 import entity.Currency;
+import entity.CurrencyFactory;
 
 import java.io.*;
 import java.net.URI;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,10 +27,11 @@ public class CurrencyListDAO implements CurrencyRepository {
 
     private static final String FILE_PATH = "symbols.txt";
     private static final String SYMBOLS_URL = "https://api.exchangeratesapi.io/v1/symbols";
-    private static final String API_KEY = "2ff60cc320a08a2913da1c7390ff4dc8";
+    private static final String API_KEY = "574aee8be3b66df24789719d4011563c";
 
     private final Map<String, Currency> currencyCache = new HashMap<>();
     private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final CurrencyFactory currencyFactory = new CurrencyFactory();
 
     public CurrencyListDAO() {
         // 1. ATTEMPT LOCAL READ FIRST. This is the fastest path.
@@ -133,7 +136,7 @@ public class CurrencyListDAO implements CurrencyRepository {
                     String rawName = parts[1].trim();
                     String decodedName = decodeUnicodeEscapes(rawName);
 
-                    Currency currency = new Currency(decodedName, parts[0].trim());
+                    Currency currency = currencyFactory.create(decodedName, parts[0].trim());
                     currencyCache.put(parts[0].trim(), currency);
                 }
             }
@@ -163,6 +166,11 @@ public class CurrencyListDAO implements CurrencyRepository {
         }
         // Fallback or error handling
         throw new IllegalArgumentException("Currency name not found: " + name);
+    }
+
+    @Override
+    public Iterator<Currency> getCurrencyIterator() {
+        return currencyCache.values().iterator();
     }
 
     public List<Currency> getAllCurrencies() {

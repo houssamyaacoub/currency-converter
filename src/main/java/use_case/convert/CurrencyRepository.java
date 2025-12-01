@@ -1,7 +1,7 @@
 package use_case.convert;
 
 import entity.Currency;
-
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -14,4 +14,5 @@ public interface CurrencyRepository {
     Currency getByCode(String code); // Renamed method for clarity
     List<Currency> getAllCurrencies(); // Ensure this method is in the interface
     Currency getByName(String name);
+    Iterator<Currency> getCurrencyIterator();
 }

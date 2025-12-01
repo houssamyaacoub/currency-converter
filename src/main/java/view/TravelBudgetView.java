@@ -1,6 +1,8 @@
 package view;
 
 import interface_adapter.ViewManagerModel;
+import interface_adapter.convert_currency.ConvertViewModel; // REQUIRED for currency list
+import interface_adapter.load_currencies.LoadCurrenciesController;
 import interface_adapter.travel_budget.TravelBudgetController;
 import interface_adapter.travel_budget.TravelBudgetState;
 import interface_adapter.travel_budget.TravelBudgetViewModel;
@@ -13,34 +15,24 @@ import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
-/**
- * Travel Budget Calculator screen.
- *
- * Lets the user pick:
- *  - a HOME currency
- *  - up to 5 line items (amount + currency)
- *
- * The use case returns:
- *  - total in the home currency
- *  - a list of formatted line-item strings
- */
-public class TravelBudgetView extends JPanel
-        implements ActionListener, PropertyChangeListener {
+public class TravelBudgetView extends JPanel implements ActionListener, PropertyChangeListener {
 
     public final String viewName = "travel_budget";
 
     // Architecture
     private final ViewManagerModel viewManagerModel;
-    private final TravelBudgetViewModel viewModel;
+    private final TravelBudgetViewModel travelBudgetViewModel;
+    private final ConvertViewModel convertViewModel; // Source of currency list
     private TravelBudgetController controller;
+    private LoadCurrenciesController loadCurrenciesController;
 
     // UI constants
     private static final Color BG = new Color(245, 247, 250);
     private static final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 20);
     private static final Font LABEL_FONT = new Font("Segoe UI", Font.PLAIN, 14);
-
     private static final int MAX_ITEMS = 5;
 
     // --- UI widgets ---
@@ -53,12 +45,17 @@ public class TravelBudgetView extends JPanel
     private final JButton calculateButton;
     private final JButton backButton;
 
+    // Constructor Update: Removed List<String>, Added ConvertViewModel
     public TravelBudgetView(ViewManagerModel viewManagerModel,
-                            TravelBudgetViewModel viewModel,
-                            List<String> allCurrencies) {
+                            TravelBudgetViewModel travelBudgetViewModel,
+                            ConvertViewModel convertViewModel) {
         this.viewManagerModel = viewManagerModel;
-        this.viewModel = viewModel;
-        this.viewModel.addPropertyChangeListener(this);
+        this.travelBudgetViewModel = travelBudgetViewModel;
+        this.convertViewModel = convertViewModel;
+
+        // Listen to both ViewModels
+        this.travelBudgetViewModel.addPropertyChangeListener(this);
+        this.convertViewModel.addPropertyChangeListener(this);
 
         setLayout(new BorderLayout());
         setBackground(BG);
@@ -83,11 +80,6 @@ public class TravelBudgetView extends JPanel
         homePanel.add(homeLabel);
 
         homeCurrencyBox = new JComboBox<>();
-        if (allCurrencies != null) {
-            for (String c : allCurrencies) {
-                homeCurrencyBox.addItem(c);
-            }
-        }
         homePanel.add(homeCurrencyBox);
         content.add(homePanel);
         content.add(Box.createVerticalStrut(20));
@@ -119,11 +111,6 @@ public class TravelBudgetView extends JPanel
             gbc.gridx = 3;
             gbc.weightx = 1.0;
             currencyBoxes[i] = new JComboBox<>();
-            if (allCurrencies != null) {
-                for (String c : allCurrencies) {
-                    currencyBoxes[i].addItem(c);
-                }
-            }
             itemsPanel.add(currencyBoxes[i], gbc);
             gbc.weightx = 0.0;
         }
@@ -162,71 +149,73 @@ public class TravelBudgetView extends JPanel
 
         // Listeners
         calculateButton.addActionListener(e -> onCalculate());
+
         backButton.addActionListener(e -> {
             if (controller != null) {
                 controller.switchToHome();
             } else {
                 viewManagerModel.setActiveView("home");
-                viewManagerModel.firePropertyChanged();
+                viewManagerModel.firePropertyChange();
+            }
+        });
+
+        // Load Data on Show
+        this.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentShown(java.awt.event.ComponentEvent e) {
+                if (homeCurrencyBox.getItemCount() == 0 && loadCurrenciesController != null) {
+                    loadCurrenciesController.execute();
+                } else {
+                    updateCurrencyDropdowns(); // Ensure latest list
+                }
             }
         });
     }
 
-    // Wiring from AppBuilder
-    public void setTravelBudgetController(TravelBudgetController controller) {
-        this.controller = controller;
-    }
+    // --- Helper: Populate all dropdowns from ConvertViewModel ---
+    private void updateCurrencyDropdowns() {
+        String[] codes = convertViewModel.getState().getCurrencyCodes();
 
-    public String getViewName() {
-        return viewName;
-    }
+        if (codes == null || codes.length == 0) return;
 
-    // Actions
+        // Update Home Box
+        Object currentHome = homeCurrencyBox.getSelectedItem();
+        homeCurrencyBox.removeAllItems();
 
-    private void onCalculate() {
-        if (controller == null) {
-            return;
+        // Update All Line Item Boxes
+        for (JComboBox<String> box : currencyBoxes) {
+            box.removeAllItems();
         }
 
-        String home = (String) homeCurrencyBox.getSelectedItem();
-        List<String> sourceCurrencies = new ArrayList<>();
-        List<String> amountStrings = new ArrayList<>();
+        // Iterator Pattern
+        java.util.List<String> codeList = java.util.Arrays.asList(codes);
+        Iterator<String> iterator = codeList.iterator();
 
-        for (int i = 0; i < MAX_ITEMS; i++) {
-            String amountText = amountFields[i].getText().trim();
-            String currencyName = (String) currencyBoxes[i].getSelectedItem();
-
-            // Only send rows where user typed something and picked his currency
-            if (!amountText.isEmpty() && currencyName != null) {
-                amountStrings.add(amountText);
-                sourceCurrencies.add(currencyName);
+        while (iterator.hasNext()) {
+            String code = iterator.next();
+            homeCurrencyBox.addItem(code);
+            for (JComboBox<String> box : currencyBoxes) {
+                box.addItem(code);
             }
         }
 
-        if (sourceCurrencies.isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Please enter at least one item (amount + currency).",
-                    "No items",
-                    JOptionPane.WARNING_MESSAGE
-            );
-            return;
-        }
-
-        // Controller will wrap into TravelBudgetInputData and call the interactor.
-        controller.execute(home, sourceCurrencies, amountStrings);
+        // Restore selection if possible
+        if (currentHome != null) homeCurrencyBox.setSelectedItem(currentHome);
     }
-
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        TravelBudgetState state = viewModel.getState();
-        if (state == null) {
-            return;
+        // Handle List Update
+        if ("currencyListLoaded".equals(evt.getPropertyName())) {
+            updateCurrencyDropdowns();
         }
 
+        // Handle Budget State Update
+        TravelBudgetState state = travelBudgetViewModel.getState();
+        if (state == null) return;
+
         if (state.getHomeCurrency() != null) {
-            homeCurrencyBox.setSelectedItem(state.getHomeCurrency());
+            // Only update if selection changed logic is needed, usually ignored to keep user selection
         }
 
         if (state.getTotalFormatted() != null) {
@@ -242,16 +231,51 @@ public class TravelBudgetView extends JPanel
         }
 
         if (state.getError() != null && !state.getError().isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    state.getError(),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
+            JOptionPane.showMessageDialog(this, state.getError(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    @Override
-    public void actionPerformed(ActionEvent e) {
+    private void onCalculate() {
+        if (controller == null) return;
+
+        String home = (String) homeCurrencyBox.getSelectedItem();
+        List<String> sourceCurrencies = new ArrayList<>();
+        List<String> amounts = new ArrayList<>(); // Fixed: Logic requires Double list
+
+        for (int i = 0; i < MAX_ITEMS; i++) {
+            String amountText = amountFields[i].getText().trim();
+            String currencyName = (String) currencyBoxes[i].getSelectedItem();
+
+            if (!amountText.isEmpty() && currencyName != null) {
+                try {
+                    String val = amountText;
+                    amounts.add(val);
+                    sourceCurrencies.add(currencyName);
+                } catch (NumberFormatException e) {
+                    // Ignore bad input or show error
+                }
+            }
+        }
+
+        if (sourceCurrencies.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter at least one item.", "No items", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        controller.execute(home, sourceCurrencies, amounts);
     }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {}
+
+    // Setters
+    public void setTravelBudgetController(TravelBudgetController controller) {
+        this.controller = controller;
+    }
+
+    public void setLoadCurrenciesController(LoadCurrenciesController controller) {
+        this.loadCurrenciesController = controller;
+    }
+
+    public String getViewName() { return viewName; }
 }

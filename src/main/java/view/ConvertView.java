@@ -8,7 +8,7 @@ import interface_adapter.favourite_currency.FavouriteCurrencyController;
 import interface_adapter.favourite_currency.FavouriteCurrencyViewModel;
 import interface_adapter.recent_currency.RecentCurrencyController;
 import interface_adapter.recent_currency.RecentCurrencyViewModel;
-import use_case.recent_currency.RecentCurrencyDataAccessInterface;
+import interface_adapter.load_currencies.LoadCurrenciesController;
 import interface_adapter.logged_in.HomeViewModel;
 import interface_adapter.compare_currencies.CompareCurrenciesController;
 
@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Iterator;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -32,6 +33,7 @@ import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.axis.CategoryAxis;
 import org.jfree.chart.renderer.category.BarRenderer;
+import use_case.recent_currency.RecentCurrencyDataAccessInterface;
 
 
 /**
@@ -62,18 +64,17 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     private final ConvertViewModel viewModel;
     private final HomeViewModel homeViewModel;
     private final ViewManagerModel viewManagerModel;
-    private final List<String> baseCurrencies;
 
     // Controllers
     private ConvertController convertController;
     private FavouriteCurrencyController favouriteCurrencyController;
     private RecentCurrencyController recentCurrencyController;
     private CompareCurrenciesController compareCurrenciesController;
+    private LoadCurrenciesController loadCurrenciesController;
 
     // View Models & DAO
     private RecentCurrencyViewModel recentCurrencyViewModel;
     private FavouriteCurrencyViewModel favouriteCurrencyViewModel;
-    private RecentCurrencyDataAccessInterface recentDAO;
 
     // --- UI Components ---
     private final JComboBox<String> fromBox;
@@ -101,11 +102,9 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
      */
     public ConvertView(ViewManagerModel viewManagerModel,
                        ConvertViewModel viewModel,
-                       List<String> baseCurrencies,
                        HomeViewModel homeViewModel) {
         this.viewManagerModel = viewManagerModel;
         this.viewModel = viewModel;
-        this.baseCurrencies = baseCurrencies;
         this.homeViewModel = homeViewModel;
 
         this.viewModel.addPropertyChangeListener(this);
@@ -290,12 +289,17 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         autoRefreshCheckBox.addActionListener(e -> handleAutoRefresh());
 
         // Update Dropdowns on Show
-        this.addComponentListener(new ComponentAdapter() {
+        this.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
-            public void componentShown(ComponentEvent e) {
-                updateCurrencyDropdown();
+            public void componentShown(java.awt.event.ComponentEvent e) {
+                // If the list is empty, trigger the load use case
+                if (fromBox.getItemCount() == 0 && loadCurrenciesController != null) {
+                    loadCurrenciesController.execute();
+                }
             }
         });
+
+
     }
 
     private void handleConvertAction() {
@@ -349,6 +353,13 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         if (fromSelected == null) return;
 
         openMultiCompareDialog(fromSelected.toString());
+
+        String[] availableCurrencies = viewModel.getState().getCurrencyCodes();
+
+        if (availableCurrencies == null || availableCurrencies.length == 0) {
+            JOptionPane.showMessageDialog(this, "Currency list not loaded.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
     }
 
     private void handleAutoRefresh() {
@@ -367,6 +378,13 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     // --- Helper UI Methods ---
 
     private void openMultiCompareDialog(String baseCurrency) {
+        String[] availableCurrencies = viewModel.getState().getCurrencyCodes();
+
+        if (availableCurrencies == null || availableCurrencies.length == 0) {
+            JOptionPane.showMessageDialog(this, "Currency list not loaded.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         JPanel panel = new JPanel(new BorderLayout(5, 5));
         panel.add(new JLabel("Compare " + baseCurrency + " against up to 5 currencies:"), BorderLayout.NORTH);
 
@@ -374,7 +392,7 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         checkBoxPanel.setLayout(new BoxLayout(checkBoxPanel, BoxLayout.Y_AXIS));
         List<JCheckBox> boxes = new ArrayList<>();
 
-        for (String code : baseCurrencies) {
+        for (String code : availableCurrencies) {
             if (code.equals(baseCurrency)) continue;
             JCheckBox cb = new JCheckBox(code);
             boxes.add(cb);
@@ -458,6 +476,10 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     public void propertyChange(PropertyChangeEvent evt) {
         ConvertState state = viewModel.getState();
 
+        if ("currencyListLoaded".equals(evt.getPropertyName())) {
+            updateCurrencyDropdown();
+        }
+
         // 1. Single Conversion Update
         if (state.getError() != null) {
             errorLabel.setText("Error: " + state.getError());
@@ -495,30 +517,27 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     public void setFavouriteCurrencyController(FavouriteCurrencyController c) { this.favouriteCurrencyController = c; }
     public void setRecentCurrencyController(RecentCurrencyController c) { this.recentCurrencyController = c; }
     public void setCompareCurrenciesController(CompareCurrenciesController c) { this.compareCurrenciesController = c; }
-
-    public void setRecentCurrencyDAO(RecentCurrencyDataAccessInterface dao) { this.recentDAO = dao; updateCurrencyDropdown(); }
+    public void setLoadCurrenciesController(LoadCurrenciesController controller) {this.loadCurrenciesController = controller;}
     public void setRecentCurrencyViewModel(RecentCurrencyViewModel vm) { this.recentCurrencyViewModel = vm; vm.addPropertyChangeListener(e -> updateCurrencyDropdown()); }
     public void setFavouriteCurrencyViewModel(FavouriteCurrencyViewModel vm) { this.favouriteCurrencyViewModel = vm; vm.addPropertyChangeListener(e -> updateCurrencyDropdown()); }
 
     private void updateCurrencyDropdown() {
-        java.util.List<String> ordered = null;
+        String[] codes = viewModel.getState().getCurrencyCodes();
 
         // Save current selections so we can restore them later
         Object currentFrom = fromBox.getSelectedItem();
         Object currentTo = toBox.getSelectedItem();
 
-        // 1. get recent/frequent ordering from DAO
-        if (recentDAO != null && homeViewModel != null && homeViewModel.getState() != null) {
-            String userId = homeViewModel.getState().getUsername();
-            if (userId != null && !userId.isEmpty()) ordered = recentDAO.getOrderedCurrenciesForUser(userId);
-        }
-        if ((ordered == null || ordered.isEmpty()) && baseCurrencies != null) ordered = baseCurrencies;
-
-        if (ordered == null) return;
+        if (codes == null || codes.length == 0) return;
 
         fromBox.removeAllItems();
         toBox.removeAllItems();
-        for (String code : ordered) {
+        // IMPLEMENTING ITERATOR PATTERN
+        java.util.List<String> codeList = java.util.Arrays.asList(codes);
+        Iterator<String> iterator = codeList.iterator();
+
+        while (iterator.hasNext()) {
+            String code = iterator.next();
             fromBox.addItem(code);
             toBox.addItem(code);
         }

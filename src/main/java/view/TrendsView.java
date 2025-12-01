@@ -8,6 +8,7 @@ import interface_adapter.favourite_currency.FavouriteCurrencyController;
 import interface_adapter.favourite_currency.FavouriteCurrencyViewModel;
 import interface_adapter.recent_currency.RecentCurrencyController;
 import interface_adapter.recent_currency.RecentCurrencyViewModel;
+import interface_adapter.load_currencies.LoadCurrenciesController;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import use_case.recent_currency.RecentCurrencyDataAccessInterface;
 
@@ -31,6 +32,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Iterator;
 
 /**
  * TrendsView
@@ -61,7 +63,6 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
 
     private RecentCurrencyController recentCurrencyController;
     private RecentCurrencyViewModel recentCurrencyViewModel;
-    private RecentCurrencyDataAccessInterface recentDAO;
 
     // --- UI Components ---
     private final JPanel chartContainer;
@@ -75,20 +76,17 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
     private final JButton favouriteToBtn;
 
     // --- Data ---
-    private final List<String> baseCurrencies;
     private final String[] timePeriods = {"1 week", "1 month", "6 months", "1 year"};
 
     /**
      * Constructs the TrendsView.
      */
-    public TrendsView(TrendsViewModel trendsViewModel,
-                      HomeViewModel homeViewModel,
-                      List<String> baseCurrencies) {
+    private LoadCurrenciesController loadCurrenciesController;
+
+    public TrendsView(TrendsViewModel trendsViewModel, HomeViewModel homeViewModel) {
 
         this.trendsViewModel = trendsViewModel;
         this.homeViewModel = homeViewModel;
-        this.baseCurrencies = baseCurrencies;
-
         this.trendsViewModel.addPropertyChangeListener(this);
 
         // Initialize Components
@@ -151,8 +149,15 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
             dummyRates.add(dummyRate);
         }
 
-        // Reuse the main chart method with dummy data
-        ChartPanel initialChart = makeChartPanel("Example Base", "Example Target", dummyDates, dummyRates);
+        TrendsState dummyState = new TrendsState();
+        dummyState.setBaseCurrency("Example Base");
+
+        java.util.ArrayList<TrendsState.SeriesData> series = new java.util.ArrayList<>();
+        series.add(new TrendsState.SeriesData("Example Target", dummyDates, dummyRates));
+
+        dummyState.setSeriesList(series);
+
+        ChartPanel initialChart = makeChartPanel(dummyState);
         chartContainer.add(initialChart, BorderLayout.CENTER);
         // --------------------------------------------------------
 
@@ -236,7 +241,12 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
         this.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentShown(java.awt.event.ComponentEvent e) {
-                updateCurrencyDropdown();
+                if (fromBox.getItemCount() == 0 && loadCurrenciesController != null) {
+                    loadCurrenciesController.execute();
+                } else {
+                    // Ensure dropdown is consistent if we switch back and forth
+                    updateCurrencyDropdown();
+                }
             }
         });
     }
@@ -251,106 +261,101 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
     }
 
     /**
-     * Generates a JFreeChart panel from raw data lists.
-     * This method is used for both the initial dummy chart and real API data.
+     * Creates a chart panel based on the data in the TrendsState.
+     * @param state The state containing the list of series data.
+     * @return A ChartPanel ready to be displayed.
      */
-    private ChartPanel makeChartPanel(String base, String target,
-                                      ArrayList<LocalDate> dates, ArrayList<Double> rates) {
+    private ChartPanel makeChartPanel(TrendsState state) {
+        TimeSeriesCollection dataset = new TimeSeriesCollection();
 
-        TimeSeries series = new TimeSeries(base + "/" + target);
+        // Check if there is data to plot
+        if (state.getSeriesList() != null) {
+            // Iterate over the SeriesData objects stored in the state
+            for (TrendsState.SeriesData seriesData : state.getSeriesList()) {
+                TimeSeries series = new TimeSeries(seriesData.getTargetCurrency());
 
-        if (dates != null && rates != null) {
-            for (int i = 0; i < dates.size(); i++) {
-                LocalDate d = dates.get(i);
-                Double r = rates.get(i);
-                Day day = new Day(d.getDayOfMonth(), d.getMonthValue(), d.getYear());
-                series.addOrUpdate(day, r);
+                java.util.ArrayList<LocalDate> dates = seriesData.getDates();
+                java.util.ArrayList<Double> values = seriesData.getPercents();
+
+                // Populate the series
+                for (int i = 0; i < dates.size(); i++) {
+                    LocalDate d = dates.get(i);
+                    Double v = values.get(i);
+                    Day day = new Day(d.getDayOfMonth(), d.getMonthValue(), d.getYear());
+                    series.addOrUpdate(day, v);
+                }
+                dataset.addSeries(series);
             }
         }
 
-        TimeSeriesCollection dataset = new TimeSeriesCollection();
-        dataset.addSeries(series);
-
+        // Create the chart
         JFreeChart chart = ChartFactory.createTimeSeriesChart(
-                "Exchange Rate: " + base + " to " + target,
-                "Date", "Rate", dataset, true, true, false
+                state.getBaseCurrency() + " vs targets (% change)", // Title
+                "Date",               // X-Axis Label
+                "Percent change (%)", // Y-Axis Label
+                dataset,              // Dataset
+                true,                 // Show Legend
+                true,                 // Show Tooltips
+                false                 // No URLs
         );
 
+        // Styling (Optional)
         XYPlot plot = (XYPlot) chart.getPlot();
+        DateAxis axis = (DateAxis) plot.getDomainAxis();
+        axis.setDateFormatOverride(new SimpleDateFormat("dd-MMM"));
         plot.setBackgroundPaint(Color.WHITE);
         plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
         plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
-
-        XYLineAndShapeRenderer renderer = (XYLineAndShapeRenderer) plot.getRenderer();
-        renderer.setDefaultShapesVisible(false);
-        renderer.setDefaultShapesFilled(false);
-
-        // Draws dot if only 1 data point
-        if (dates != null && dates.size() == 1) {
-            renderer.setDefaultShapesVisible(true);
-            renderer.setDefaultShapesFilled(true);
-        }
-        DateAxis axis = (DateAxis) plot.getDomainAxis();
-        axis.setDateFormatOverride(new SimpleDateFormat("MMM-dd"));
 
         return new ChartPanel(chart);
     }
 
     /**
-     * Updates dropdowns based on Recent/Favourite data.
+     * Updates dropdowns based on ViewModel data using Iterator Pattern.
      */
     private void updateCurrencyDropdown() {
-        List<String> ordered = null;
+        // CLEAN ARCHITECTURE: Read from ViewModel
+        String[] codes = trendsViewModel.getState().getCurrencyCodes();
 
-        // Save current selections so we can restore them later
+        // Save current selections
         Object currentFrom = fromBox.getSelectedItem();
         Object currentTo = toBox.getSelectedItem();
 
-        if (recentDAO != null && homeViewModel != null && homeViewModel.getState() != null) {
-            String userId = homeViewModel.getState().getUsername();
-            if (userId != null && !userId.isEmpty()) {
-                ordered = recentDAO.getOrderedCurrenciesForUser(userId);
-            }
-        }
-
-        if ((ordered == null || ordered.isEmpty()) && baseCurrencies != null) {
-            ordered = new ArrayList<>(baseCurrencies);
-        }
-
-        if (ordered == null || ordered.isEmpty()) return;
-
-        List<String> finalOrdered = ordered;
+        if (codes == null || codes.length == 0) return;
 
         fromBox.removeAllItems();
         toBox.removeAllItems();
-        for (String code : finalOrdered) {
+
+        // ITERATOR PATTERN implementation
+        java.util.List<String> codeList = java.util.Arrays.asList(codes);
+        Iterator<String> iterator = codeList.iterator();
+
+        while (iterator.hasNext()) {
+            String code = iterator.next();
             fromBox.addItem(code);
             toBox.addItem(code);
         }
+
+        // Restore selections if possible
         if (currentFrom != null) fromBox.setSelectedItem(currentFrom);
         if (currentTo != null) toBox.setSelectedItem(currentTo);
-
-
     }
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if ("state".equals(evt.getPropertyName())) {
-            TrendsState state = (TrendsState) evt.getNewValue();
+        if ("currencyListLoaded".equals(evt.getPropertyName())) {
+            updateCurrencyDropdown();
+        } else if ("state".equals(evt.getPropertyName())) { // Trends updated
+            TrendsState state = trendsViewModel.getState();
             chartContainer.removeAll();
 
-            if (state.getDates() != null && !state.getDates().isEmpty()) {
-                ChartPanel newChart = makeChartPanel(
-                        state.getBaseCurrency(),
-                        state.getTargetCurrency(),
-                        state.getDates(),
-                        state.getRates()
-                );
+            if (state.getSeriesList() != null && !state.getSeriesList().isEmpty()) {
+                ChartPanel newChart = makeChartPanel(state);
                 chartContainer.add(newChart, BorderLayout.CENTER);
+            } else if (state.getError() != null) {
+                chartContainer.add(new JLabel("Error: " + state.getError(), SwingConstants.CENTER), BorderLayout.CENTER);
             } else {
-                JLabel noData = new JLabel("No Data Available");
-                noData.setHorizontalAlignment(SwingConstants.CENTER);
-                chartContainer.add(noData, BorderLayout.CENTER);
+                chartContainer.add(new JLabel("No Data Available", SwingConstants.CENTER), BorderLayout.CENTER);
             }
             chartContainer.revalidate();
             chartContainer.repaint();
@@ -361,6 +366,7 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
     public void actionPerformed(ActionEvent e) {}
 
     // --- Dependency Injection ---
+    public void setLoadCurrenciesController(LoadCurrenciesController controller) {this.loadCurrenciesController = controller;}
     public void setTrendsController(TrendsController controller) { this.trendsController = controller; }
     public void setFavouriteCurrencyController(FavouriteCurrencyController controller) { this.favouriteCurrencyController = controller; }
     public void setFavouriteCurrencyViewModel(FavouriteCurrencyViewModel vm) {
@@ -372,10 +378,7 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
         this.recentCurrencyViewModel = vm;
         if (this.recentCurrencyViewModel != null) this.recentCurrencyViewModel.addPropertyChangeListener(evt -> updateCurrencyDropdown());
     }
-    public void setRecentCurrencyDAO(RecentCurrencyDataAccessInterface dao) {
-        this.recentDAO = dao;
-        updateCurrencyDropdown();
-    }
+
     public String getViewName() { return this.viewName; }
 
     // --- Helper Methods ---

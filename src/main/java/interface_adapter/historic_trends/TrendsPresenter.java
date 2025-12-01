@@ -18,6 +18,20 @@ public class TrendsPresenter implements TrendsOutputBoundary {
     }
 
     @Override
+    public void prepareInitialView() {
+        TrendsState state = trendsViewModel.getState();
+        state.setError(null);
+
+        state.setSeriesList(new java.util.ArrayList<>());
+
+        trendsViewModel.setState(state);
+        trendsViewModel.firePropertyChange();
+
+        viewManagerModel.setActiveView("trends");
+        viewManagerModel.firePropertyChange();
+    }
+
+    @Override
     public void prepareSuccessView(TrendsOutputData outputData) {
         // 1. Get the current state of the Trends View
         TrendsState state = trendsViewModel.getState();
@@ -41,9 +55,10 @@ public class TrendsPresenter implements TrendsOutputBoundary {
 
     @Override
     public void prepareFailView(String errorMessage) {
-        // If something went wrong, we might want to show a popup on the CURRENT screen
-        // But since we are switching screens, we usually just don't switch.
-        System.out.println("TrendsPresenter: " + errorMessage);
+        TrendsState state = trendsViewModel.getState();
+        state.setError(errorMessage);
+        trendsViewModel.setState(state);
+        trendsViewModel.firePropertyChange();
     }
 
     @Override
