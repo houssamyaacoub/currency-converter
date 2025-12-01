@@ -10,6 +10,17 @@ import interface_adapter.compare_currencies.CompareCurrenciesPresenter;
 import interface_adapter.travel_budget.TravelBudgetViewModel;
 import use_case.travel_budget.*;
 
+import interface_adapter.offline_viewing.OfflineViewModel;
+import interface_adapter.offline_viewing.OfflineViewPresenter;
+import interface_adapter.offline_viewing.OfflineViewController;
+
+import use_case.offline_viewing.OfflineViewInputBoundary;
+import use_case.offline_viewing.OfflineViewInteractor;
+import use_case.offline_viewing.OfflineViewOutputBoundary;
+
+import data_access.offline_viewing.PairRateCache;
+
+
 import interface_adapter.travel_budget.TravelBudgetController;
 import interface_adapter.travel_budget.TravelBudgetPresenter;
 import use_case.compare_currencies.CompareCurrenciesInputBoundary;
@@ -86,6 +97,9 @@ public class AppBuilder {
 
     private TravelBudgetViewModel travelBudgetViewModel;
     private TravelBudgetView travelBudgetView;
+
+    private OfflineViewModel offlineViewModel;
+
 
     private ConvertView convertView;
     private final ExchangeRateDataAccessInterface dataAccess = new ExchangeRateHostDAO(currencyRepository);
@@ -169,6 +183,33 @@ public class AppBuilder {
 
         return this;
     }
+
+    public AppBuilder addOfflineViewingUseCase() {
+        // 1. ViewModel
+        offlineViewModel = new OfflineViewModel();
+
+        // 2. Cache (same filename as ExchangeRateHostDAO)
+        PairRateCache cache = new PairRateCache(PairRateCache.DEFAULT_FILENAME);
+
+        // 3. Presenter
+        OfflineViewOutputBoundary offlinePresenter =
+                new OfflineViewPresenter(offlineViewModel);
+
+        // 4. Interactor
+        OfflineViewInputBoundary offlineInteractor =
+                new OfflineViewInteractor(cache, offlinePresenter);
+
+        // 5. Controller
+        OfflineViewController offlineController =
+                new OfflineViewController(offlineInteractor);
+
+        // 6. Inject into ConvertView so it can display offline status
+        convertView.setOfflineViewModel(offlineViewModel);
+        convertView.setOfflineViewController(offlineController);
+
+        return this;
+    }
+
 
     public AppBuilder addConvertUseCase() {
         // Single-conversion use case (existing)

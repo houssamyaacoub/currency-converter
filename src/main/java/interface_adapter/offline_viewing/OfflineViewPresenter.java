@@ -5,32 +5,42 @@ import use_case.offline_viewing.OfflineViewOutputData;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 
+/**
+ * Presenter for offline viewing.
+ * Translates use-case output into OfflineViewModel fields.
+ */
 public class OfflineViewPresenter implements OfflineViewOutputBoundary {
 
-    private final OfflineViewModel offlineViewModel;
-
     private static final DateTimeFormatter FORMATTER =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
                     .withZone(ZoneId.systemDefault());
 
-    public OfflineViewPresenter(OfflineViewModel offlineViewModel) {
-        this.offlineViewModel = offlineViewModel;
+    private final OfflineViewModel viewModel;
+
+    public OfflineViewPresenter(OfflineViewModel viewModel) {
+        this.viewModel = viewModel;
     }
 
     @Override
     public void present(OfflineViewOutputData outputData) {
-        offlineViewModel.setRates(outputData.getRates());
-        offlineViewModel.setTimestamp(outputData.getTimestamp());
+        String msg = "Offline Data - Last Updated: " +
+                FORMATTER.format(outputData.getTimestamp());
 
-        String formatted = FORMATTER.format(outputData.getTimestamp());
-        offlineViewModel.setStatusMessage(
-                "Offline Data – Last Updated: " + formatted
-        );
+        viewModel.setRates(outputData.getRates());
+        viewModel.setTimestamp(outputData.getTimestamp());
+        viewModel.setStatusMessage(msg);
     }
 
     @Override
     public void prepareFailView(String error) {
-        offlineViewModel.setStatusMessage(error);
+        String msg = (error == null || error.isEmpty())
+                ? "Offline data unavailable."
+                : error;
+
+        viewModel.setRates(Collections.emptyMap());
+        viewModel.setTimestamp(null);
+        viewModel.setStatusMessage(msg);
     }
 }
