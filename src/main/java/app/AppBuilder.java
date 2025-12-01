@@ -7,6 +7,11 @@ import entity.UserFactory;
 import interface_adapter.ViewManagerModel;
 import interface_adapter.compare_currencies.CompareCurrenciesController;
 import interface_adapter.compare_currencies.CompareCurrenciesPresenter;
+import interface_adapter.travel_budget.TravelBudgetViewModel;
+import use_case.travel_budget.*;
+
+import interface_adapter.travel_budget.TravelBudgetController;
+import interface_adapter.travel_budget.TravelBudgetPresenter;
 import use_case.compare_currencies.CompareCurrenciesInputBoundary;
 import use_case.compare_currencies.CompareCurrenciesInteractor;
 import use_case.compare_currencies.CompareCurrenciesOutputBoundary;
@@ -45,31 +50,13 @@ import use_case.logout.LogoutOutputBoundary;
 import use_case.signup.SignupInputBoundary;
 import use_case.signup.SignupInteractor;
 import use_case.signup.SignupOutputBoundary;
+import use_case.travel_budget.TravelBudgetInputBoundary;
+import use_case.travel_budget.TravelBudgetInteractor;
+import use_case.travel_budget.TravelBudgetOutputBoundary;
 import view.*;
 
 import javax.swing.*;
 import java.awt.*;
-
-/**
- * Builder responsible for wiring together all views, view models,
- * controllers and use cases for the Swing application.
- * Usage:
- *     JFrame frame = new AppBuilder()
- *             .addLoginView()
- *             .addSignupView()
- *             .addHomeView()
- *             .addTrendsView()
- *             .addConvertView()
- *             .addSignupUseCase()
- *             .addLoginUseCase()
- *             .addLogoutUseCase()
- *             .addChangePasswordUseCase()
- *             .addTrendsUseCase()
- *             .addFavouriteCurrencyUseCase()
- *             .addRecentCurrencyUseCase()
- *             .addConvertUseCase()
- *             .build();
- */
 
 public class AppBuilder {
     private final JPanel cardPanel = new JPanel();
@@ -97,17 +84,13 @@ public class AppBuilder {
     // NEW: store full currency list so all views can use it
     private java.util.List<String> baseCurrencies;
 
+    private TravelBudgetViewModel travelBudgetViewModel;
+    private TravelBudgetView travelBudgetView;
+
     private ConvertView convertView;
     private final ExchangeRateDataAccessInterface dataAccess = new ExchangeRateHostDAO(currencyRepository);
     // Shared DAO for favourites so all use cases see the same in-memory data.
     //private data_access.FavouriteCurrencyFileDataAccessObject favouriteDAO;
-
-
-    /**
-     * Creates a new {@code AppBuilder} and pre-loads the list of available
-     * currencies from {@link CurrencyListDAO}. The list is reused by multiple
-     * views so that they share a single source of truth.
-     */
 
 
 
@@ -123,25 +106,12 @@ public class AppBuilder {
         }
     }
 
-    /**
-     * Registers the signup view with the card panel.
-     *
-     * @return this builder for method chaining
-     */
-
     public AppBuilder addSignupView() {
         signupViewModel = new SignupViewModel();
         signupView = new SignupView(signupViewModel);
         cardPanel.add(signupView, signupView.getViewName());
         return this;
     }
-
-
-    /**
-     * Registers the login view with the card panel.
-     *
-     * @return this builder
-     */
 
     public AppBuilder addLoginView() {
         loginViewModel = new LoginViewModel();
@@ -150,12 +120,6 @@ public class AppBuilder {
         return this;
     }
 
-    /**
-     * Registers the home view with the card panel.
-     *
-     * @return this builder
-     */
-
     public AppBuilder addHomeView() {
         homeViewModel = new HomeViewModel();
         homeView = new HomeView(homeViewModel, viewManagerModel);
@@ -163,24 +127,12 @@ public class AppBuilder {
         return this;
     }
 
-    /**
-     * Registers the historic trends view with the card panel.
-     *
-     * @return this builder
-     */
-
     public AppBuilder addTrendsView() {
         trendsViewModel = new TrendsViewModel();
         trendsView = new TrendsView(trendsViewModel, homeViewModel, baseCurrencies);
         cardPanel.add(trendsView, trendsView.getViewName());
         return this;
     }
-
-    /**
-     * Registers the main currency conversion view with the card panel.
-     *
-     * @return this builder
-     */
 
 
     public AppBuilder addConvertView() {
@@ -193,12 +145,30 @@ public class AppBuilder {
         return this;
     }
 
-    /**
-     * Wires the single-conversion and "compare multiple currencies"
-     * use cases into the home and convert views.
-     *
-     * @return this builder
-     */
+    public AppBuilder addTravelBudgetView() {
+        travelBudgetViewModel = new TravelBudgetViewModel();
+        travelBudgetView = new TravelBudgetView(viewManagerModel, travelBudgetViewModel, baseCurrencies);
+        cardPanel.add(travelBudgetView, travelBudgetView.getViewName());
+        return this;
+    }
+
+    public AppBuilder addTravelBudgetUseCase() {
+        TravelBudgetOutputBoundary presenter =
+                new TravelBudgetPresenter(viewManagerModel, travelBudgetViewModel);
+
+        TravelBudgetInputBoundary interactor =
+                new TravelBudgetInteractor(dataAccess, currencyRepository, presenter);
+
+        TravelBudgetController controller =
+                new TravelBudgetController(interactor);
+
+        travelBudgetView.setTravelBudgetController(controller);
+
+        // give HomeView a way to open this screen (you'll add a button there)
+        homeView.setTravelBudgetController(controller);
+
+        return this;
+    }
 
     public AppBuilder addConvertUseCase() {
         // Single-conversion use case (existing)
