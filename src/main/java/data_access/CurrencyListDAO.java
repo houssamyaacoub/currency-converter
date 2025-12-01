@@ -132,7 +132,8 @@ public class CurrencyListDAO implements CurrencyRepository {
                     String rawName = parts[1].trim();
                     String decodedName = decodeUnicodeEscapes(rawName);
 
-                    Currency currency = currencyFactory.create(decodedName, parts[0].trim());                    currencyCache.put(parts[0].trim(), currency);
+                    Currency currency = currencyFactory.create(decodedName, parts[0].trim());
+                    currencyCache.put(parts[0].trim(), currency);
                 }
             }
         } catch (IOException e) {
