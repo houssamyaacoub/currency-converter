@@ -25,7 +25,7 @@ import java.util.List;
 public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
 
     private static final String BASE_URL = "https://api.exchangeratesapi.io/latest";
-    private static final String API_KEY = "14ab2d5246a7da409cd09bb96caa4691";
+    private static final String API_KEY = "574aee8be3b66df24789719d4011563c";
 
     private final HttpClient httpClient;
     private final CurrencyRepository currencyLookup;

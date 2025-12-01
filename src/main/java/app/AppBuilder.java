@@ -9,6 +9,9 @@ import interface_adapter.compare_currencies.CompareCurrenciesController;
 import interface_adapter.compare_currencies.CompareCurrenciesPresenter;
 import interface_adapter.travel_budget.TravelBudgetViewModel;
 import use_case.travel_budget.*;
+import interface_adapter.load_currencies.LoadCurrenciesController;
+import interface_adapter.load_currencies.LoadCurrenciesPresenter;
+import interface_adapter.load_currencies.LoadCurrenciesViewModel;
 
 import interface_adapter.offline_viewing.OfflineViewModel;
 import interface_adapter.offline_viewing.OfflineViewPresenter;
@@ -26,6 +29,9 @@ import interface_adapter.travel_budget.TravelBudgetPresenter;
 import use_case.compare_currencies.CompareCurrenciesInputBoundary;
 import use_case.compare_currencies.CompareCurrenciesInteractor;
 import use_case.compare_currencies.CompareCurrenciesOutputBoundary;
+import use_case.load_currencies.LoadCurrenciesInputBoundary;
+import use_case.load_currencies.LoadCurrenciesInteractor;
+import use_case.load_currencies.LoadCurrenciesOutputBoundary;
 import interface_adapter.convert_currency.ConvertController;
 import interface_adapter.convert_currency.ConvertPresenter;
 import interface_adapter.convert_currency.ConvertViewModel;
@@ -66,6 +72,7 @@ import use_case.travel_budget.TravelBudgetInteractor;
 import use_case.travel_budget.TravelBudgetOutputBoundary;
 import view.*;
 
+import java.util.ArrayList;
 import javax.swing.*;
 import java.awt.*;
 
@@ -83,16 +90,17 @@ public class AppBuilder {
             new FileUserDataAccessObject("users.csv", userFactory, currencyRepository);
     // DAO version using a shared external database
 
+
     private SignupView signupView;
     private SignupViewModel signupViewModel;
     private LoginViewModel loginViewModel;
     private HomeViewModel homeViewModel;
     private TrendsViewModel trendsViewModel;
     private ConvertViewModel convertViewModel;
+    private LoadCurrenciesViewModel loadCurrenciesViewModel;
     private HomeView homeView;
     private LoginView loginView;
     private TrendsView trendsView;
-    // NEW: store full currency list so all views can use it
     private java.util.List<String> baseCurrencies;
 
     private TravelBudgetViewModel travelBudgetViewModel;
@@ -103,16 +111,12 @@ public class AppBuilder {
 
     private ConvertView convertView;
     private final ExchangeRateDataAccessInterface dataAccess = new ExchangeRateHostDAO(currencyRepository);
-    // Shared DAO for favourites so all use cases see the same in-memory data.
-    //private data_access.FavouriteCurrencyFileDataAccessObject favouriteDAO;
-
 
 
 
     public AppBuilder() {
         cardPanel.setLayout(cardLayout);
         this.viewManager = new ViewManager(cardPanel, cardLayout, viewManagerModel);
-        // NEW: initialize baseCurrencies once, so all views can use it
         baseCurrencies = new java.util.ArrayList<>();
         for (entity.Currency c : currencyRepository.getAllCurrencies()) {
             // Use the same display string as in ConvertView (currently currency name)
@@ -148,7 +152,6 @@ public class AppBuilder {
         return this;
     }
 
-
     public AppBuilder addConvertView() {
         convertViewModel = new ConvertViewModel();
 
@@ -161,7 +164,7 @@ public class AppBuilder {
 
     public AppBuilder addTravelBudgetView() {
         travelBudgetViewModel = new TravelBudgetViewModel();
-        travelBudgetView = new TravelBudgetView(viewManagerModel, travelBudgetViewModel, baseCurrencies);
+        travelBudgetView = new TravelBudgetView(viewManagerModel, travelBudgetViewModel, convertViewModel);
         cardPanel.add(travelBudgetView, travelBudgetView.getViewName());
         return this;
     }
@@ -257,6 +260,33 @@ public class AppBuilder {
         return this;
     }
 
+    public AppBuilder addLoadCurrenciesUseCase() {
+
+        loadCurrenciesViewModel = new LoadCurrenciesViewModel();
+        // 1. Ensure the DAO is ready (fetches from API if file missing)
+        currencyRepository.fetchAndWriteToFile();
+
+        // 2. Wire the Use Case
+        final LoadCurrenciesOutputBoundary loadPresenter =
+                new LoadCurrenciesPresenter(convertViewModel, loadCurrenciesViewModel);
+
+
+        final LoadCurrenciesInputBoundary loadInteractor =
+                new LoadCurrenciesInteractor(currencyRepository, loadPresenter);
+
+        final LoadCurrenciesController loadController =
+                new LoadCurrenciesController(loadInteractor);
+
+        if (travelBudgetView != null) {
+            travelBudgetView.setLoadCurrenciesController(loadController);
+        }
+
+        // 3. TRIGGER THE LOAD IMMEDIATELY
+        loadController.execute();
+
+        return this;
+    }
+
     public AppBuilder addChangePasswordUseCase() {
         final ChangePasswordOutputBoundary changePasswordOutputBoundary = new ChangePasswordPresenter(viewManagerModel,
                 homeViewModel);
@@ -322,7 +352,6 @@ public class AppBuilder {
         convertView.setFavouriteCurrencyController(favouriteController);
         convertView.setFavouriteCurrencyViewModel(favouriteVM);
 
-        // NEW: also inject into TrendsView so it can refresh ordering when favourites change
         if (trendsView != null) {
             trendsView.setFavouriteCurrencyController(favouriteController);
             trendsView.setFavouriteCurrencyViewModel(favouriteVM);
@@ -357,13 +386,10 @@ public class AppBuilder {
                 new interface_adapter.recent_currency.RecentCurrencyController(recentInteractor);
 
         // 6. Inject into ConvertView
-        convertView.setRecentCurrencyDAO(recentDAO);
         convertView.setRecentCurrencyViewModel(recentVM);
         convertView.setRecentCurrencyController(recentController);
 
-        // NEW: also inject into TrendsView so "From"/"To" ordering and Graph clicks update recent
         if (trendsView != null) {
-            trendsView.setRecentCurrencyDAO(recentDAO);
             trendsView.setRecentCurrencyViewModel(recentVM);
             trendsView.setRecentCurrencyController(recentController);
         }
