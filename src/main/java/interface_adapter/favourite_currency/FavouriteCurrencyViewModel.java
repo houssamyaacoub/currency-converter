@@ -10,7 +10,16 @@ import interface_adapter.ViewModel;
  */
 public class FavouriteCurrencyViewModel extends ViewModel<FavouriteCurrencyState> {
 
+    /**
+     * Logical name of this view; must match the name used in the
+     * view-switching mechanism (e.g., in controllers or app builder).
+     */
+
     public static final String VIEW_NAME = "favourite-currency";
+
+    /**
+     * Creates a new FavouriteCurrencyViewModel with an empty default state.
+     */
 
     public FavouriteCurrencyViewModel() {
         super(VIEW_NAME);

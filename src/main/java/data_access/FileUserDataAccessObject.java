@@ -24,6 +24,10 @@ import java.util.LinkedHashSet;
 
 /**
  * DAO for user data implemented using a File to persist the data.
+ * In addition to basic account information (username &amp; password), this
+ * implementation also stores each user's favourite currencies and recent
+ * currencies in the same {@code users.csv} file so that all user-related
+ * data has a single persistent source of truth.
  */
 public class FileUserDataAccessObject implements SignupUserDataAccessInterface,
                                                  LoginUserDataAccessInterface,
@@ -206,11 +210,13 @@ public class FileUserDataAccessObject implements SignupUserDataAccessInterface,
         return currencyCode != null && !currencyCode.trim().isEmpty();
     }
 
-
-
     /**
      * Returns a copy of the favourites list for a given user.
+     *
+     * @param username the user whose favourites should be retrieved
+     * @return a defensive copy of the favourites list (never {@code null})
      */
+
     public List<String> getFavouritesForUser(String username) {
         List<String> favs = favouritesByUser.get(username);
         if (favs == null) {
@@ -220,7 +226,10 @@ public class FileUserDataAccessObject implements SignupUserDataAccessInterface,
     }
 
     /**
-     * Replaces the favourites list for a given user.
+     * Replaces the favourites list for a given user and persists it to disk.
+     *
+     * @param username the user whose favourites should be updated
+     * @param favs     the new list of favourite currency codes
      */
     public void setFavouritesForUser(String username, List<String> favs) {
         favouritesByUser.put(username, new ArrayList<>(favs)); // store a copy
@@ -235,7 +244,10 @@ public class FileUserDataAccessObject implements SignupUserDataAccessInterface,
 
     /**
      * Returns a copy of the recents deque for a given user.
-     * Most recent should be first.
+     * The most recent currency appears first.
+     *
+     * @param username the user whose recents should be retrieved
+     * @return a defensive copy of the recents deque (never {@code null})
      */
     public Deque<String> getRecentsForUser(String username) {
         Deque<String> rec = recentsByUser.get(username);
@@ -246,7 +258,10 @@ public class FileUserDataAccessObject implements SignupUserDataAccessInterface,
     }
 
     /**
-     * Replace the recents deque for a given user.
+     * Replaces the recents deque for a given user and persists it to disk.
+     *
+     * @param username the user whose recents should be updated
+     * @param recents  the new deque of recent currency codes
      */
     public void setRecentsForUser(String username, Deque<String> recents) {
         recentsByUser.put(username, new ArrayDeque<>(recents)); // store a copy

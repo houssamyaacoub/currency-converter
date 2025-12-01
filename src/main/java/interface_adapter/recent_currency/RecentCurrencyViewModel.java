@@ -10,7 +10,16 @@ import interface_adapter.ViewModel;
  */
 public class RecentCurrencyViewModel extends ViewModel<RecentCurrencyState> {
 
+    /**
+     * Logical name of this view; must match the name used in the view-switching
+     * mechanism (for example, in controllers or app builder).
+     */
+
     public static final String VIEW_NAME = "recent-currency";
+
+    /**
+     * Creates a new RecentCurrencyViewModel with an empty default state.
+     */
 
     public RecentCurrencyViewModel() {
         super(VIEW_NAME);

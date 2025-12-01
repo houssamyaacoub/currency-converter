@@ -29,6 +29,10 @@ import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.category.DefaultCategoryDataset;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.axis.CategoryAxis;
+import org.jfree.chart.renderer.category.BarRenderer;
+
 
 /**
  * ConvertView
@@ -405,12 +409,37 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
         JFreeChart chart = ChartFactory.createBarChart(
                 "Relative Strength vs " + baseCurrency,
-                "Target Currency", "Rate", dataset,
-                PlotOrientation.VERTICAL, false, true, false
+                "Target Currency",
+                "Rate",
+                dataset,
+                PlotOrientation.VERTICAL,
+                false,
+                true,
+                false
         );
 
-        JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(this), "Comparison Result", Dialog.ModalityType.MODELESS);
-        dialog.getContentPane().add(new ChartPanel(chart));
+        // --- Keep bar width reasonable whether there is 1 or 5 bars ---
+        CategoryPlot plot = chart.getCategoryPlot();
+
+        // Control bar width
+        BarRenderer renderer = (BarRenderer) plot.getRenderer();
+        renderer.setMaximumBarWidth(0.15); // 0.0–1.0, fraction of available space per category
+
+        // Add margins around categories so a single bar does not fill the chart
+        CategoryAxis domainAxis = plot.getDomainAxis();
+        domainAxis.setLowerMargin(0.25);   // left padding
+        domainAxis.setUpperMargin(0.25);   // right padding
+        domainAxis.setCategoryMargin(0.20); // spacing between bars when there are multiple
+
+        ChartPanel chartPanel = new ChartPanel(chart);
+        chartPanel.setPreferredSize(new Dimension(600, 400)); // consistent visual size
+
+        JDialog dialog = new JDialog(
+                SwingUtilities.getWindowAncestor(this),
+                "Comparison Result",
+                Dialog.ModalityType.MODELESS
+        );
+        dialog.setContentPane(chartPanel);
         dialog.pack();
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);

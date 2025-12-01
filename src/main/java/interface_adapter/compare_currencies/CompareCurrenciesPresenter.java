@@ -15,13 +15,18 @@ public class CompareCurrenciesPresenter implements CompareCurrenciesOutputBounda
 
     @Override
     public void present(CompareCurrenciesOutputData data) {
-        // Grab current state, fill in compare data, and fire change
+        // Grab current state
         ConvertState state = convertViewModel.getState();
+
+        // Make sure the state's base currency matches the base used in comparison
+        state.setFromCurrency(data.getBaseCurrencyName());
+
+        // Fill in compare data
         state.setCompareTargets(data.getTargetCurrencyNames());
         state.setCompareRates(data.getRates());
-        convertViewModel.setState(state);
 
-        // This will trigger ConvertView.propertyChange(...)
+        // Push state + notify view
+        convertViewModel.setState(state);
         convertViewModel.firePropertyChange();
     }
 

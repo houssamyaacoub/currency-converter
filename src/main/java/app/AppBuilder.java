@@ -7,13 +7,9 @@ import entity.UserFactory;
 import interface_adapter.ViewManagerModel;
 import interface_adapter.compare_currencies.CompareCurrenciesController;
 import interface_adapter.compare_currencies.CompareCurrenciesPresenter;
-import interface_adapter.travel_budget.TravelBudgetViewModel;
-import use_case.travel_budget.*;
-
 import interface_adapter.travel_budget.TravelBudgetController;
 import interface_adapter.travel_budget.TravelBudgetPresenter;
 import interface_adapter.travel_budget.TravelBudgetViewModel;
-
 import use_case.compare_currencies.CompareCurrenciesInputBoundary;
 import use_case.compare_currencies.CompareCurrenciesInteractor;
 import use_case.compare_currencies.CompareCurrenciesOutputBoundary;
@@ -52,6 +48,9 @@ import use_case.logout.LogoutOutputBoundary;
 import use_case.signup.SignupInputBoundary;
 import use_case.signup.SignupInteractor;
 import use_case.signup.SignupOutputBoundary;
+import use_case.travel_budget.TravelBudgetInputBoundary;
+import use_case.travel_budget.TravelBudgetInteractor;
+import use_case.travel_budget.TravelBudgetOutputBoundary;
 import view.*;
 
 import javax.swing.*;
@@ -82,10 +81,6 @@ public class AppBuilder {
     private TrendsView trendsView;
     // NEW: store full currency list so all views can use it
     private java.util.List<String> baseCurrencies;
-
-    private TravelBudgetViewModel travelBudgetViewModel;
-    private TravelBudgetView travelBudgetView;
-
 
     private ConvertView convertView;
     private final ExchangeRateDataAccessInterface dataAccess = new ExchangeRateHostDAO(currencyRepository);
@@ -134,6 +129,17 @@ public class AppBuilder {
         return this;
     }
 
+
+    public AppBuilder addConvertView() {
+        convertViewModel = new ConvertViewModel();
+
+        convertView = new ConvertView(viewManagerModel, convertViewModel, baseCurrencies, homeViewModel);
+
+
+        cardPanel.add(convertView, convertView.getViewName());
+        return this;
+    }
+
     public AppBuilder addTravelBudgetView() {
         travelBudgetViewModel = new TravelBudgetViewModel();
         travelBudgetView = new TravelBudgetView(viewManagerModel, travelBudgetViewModel, baseCurrencies);
@@ -156,17 +162,6 @@ public class AppBuilder {
         // give HomeView a way to open this screen (you'll add a button there)
         homeView.setTravelBudgetController(controller);
 
-        return this;
-    }
-
-
-    public AppBuilder addConvertView() {
-        convertViewModel = new ConvertViewModel();
-
-        convertView = new ConvertView(viewManagerModel, convertViewModel, baseCurrencies, homeViewModel);
-
-
-        cardPanel.add(convertView, convertView.getViewName());
         return this;
     }
 

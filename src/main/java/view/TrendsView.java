@@ -8,6 +8,7 @@ import interface_adapter.favourite_currency.FavouriteCurrencyController;
 import interface_adapter.favourite_currency.FavouriteCurrencyViewModel;
 import interface_adapter.recent_currency.RecentCurrencyController;
 import interface_adapter.recent_currency.RecentCurrencyViewModel;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import use_case.recent_currency.RecentCurrencyDataAccessInterface;
 
 import org.jfree.chart.ChartFactory;
@@ -208,14 +209,17 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
      * Configures all action listeners.
      */
     private void setupListeners() {
+
+        // Back Button
         backBtn.addActionListener(evt -> {
             if (trendsController != null) trendsController.switchToHome();
         });
 
+        // Graph Button
         graphBtn.addActionListener(evt -> {
             String from = String.valueOf(fromBox.getSelectedItem());
             String to = String.valueOf(toBox.getSelectedItem());
-            String period = (String) timePeriodBox.getSelectedItem();
+            String period = String.valueOf(timePeriodBox.getSelectedItem());
 
             if (from != null && to != null) {
                 if (from.equals(to)) {
@@ -244,7 +248,6 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
         if (userId == null || userId.isEmpty() || selectedItem == null) return;
 
         favouriteCurrencyController.execute(userId, selectedItem.toString(), true);
-        JOptionPane.showMessageDialog(this, selectedItem.toString() + " added to favourites!");
     }
 
     /**
@@ -278,6 +281,15 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
         plot.setDomainGridlinePaint(Color.LIGHT_GRAY);
         plot.setRangeGridlinePaint(Color.LIGHT_GRAY);
 
+        XYLineAndShapeRenderer renderer = (XYLineAndShapeRenderer) plot.getRenderer();
+        renderer.setDefaultShapesVisible(false);
+        renderer.setDefaultShapesFilled(false);
+
+        // Draws dot if only 1 data point
+        if (dates != null && dates.size() == 1) {
+            renderer.setDefaultShapesVisible(true);
+            renderer.setDefaultShapesFilled(true);
+        }
         DateAxis axis = (DateAxis) plot.getDomainAxis();
         axis.setDateFormatOverride(new SimpleDateFormat("MMM-dd"));
 
@@ -289,6 +301,11 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
      */
     private void updateCurrencyDropdown() {
         List<String> ordered = null;
+
+        // Save current selections so we can restore them later
+        Object currentFrom = fromBox.getSelectedItem();
+        Object currentTo = toBox.getSelectedItem();
+
         if (recentDAO != null && homeViewModel != null && homeViewModel.getState() != null) {
             String userId = homeViewModel.getState().getUsername();
             if (userId != null && !userId.isEmpty()) {
@@ -303,14 +320,17 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
         if (ordered == null || ordered.isEmpty()) return;
 
         List<String> finalOrdered = ordered;
-        SwingUtilities.invokeLater(() -> {
-            fromBox.removeAllItems();
-            toBox.removeAllItems();
-            for (String code : finalOrdered) {
-                fromBox.addItem(code);
-                toBox.addItem(code);
-            }
-        });
+
+        fromBox.removeAllItems();
+        toBox.removeAllItems();
+        for (String code : finalOrdered) {
+            fromBox.addItem(code);
+            toBox.addItem(code);
+        }
+        if (currentFrom != null) fromBox.setSelectedItem(currentFrom);
+        if (currentTo != null) toBox.setSelectedItem(currentTo);
+
+
     }
 
     @Override
