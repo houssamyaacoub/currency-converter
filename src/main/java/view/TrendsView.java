@@ -41,11 +41,11 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
     public TrendsView(TrendsViewModel trendsViewModel) {
         this.trendsViewModel = trendsViewModel;
         this.trendsViewModel.addPropertyChangeListener(this);
-        try {
-            UIManager.setLookAndFeel("javax.swing.plaf.metal.MetalLookAndFeel");
-        } catch(Exception e){
-            System.out.println("L&F not found");
-        }
+//        try {
+//            UIManager.setLookAndFeel("javax.swing.plaf.metal.MetalLookAndFeel");
+//        } catch(Exception e){
+//            System.out.println("L&F not found");
+//        }
 
         setLayout(new BorderLayout());
 
