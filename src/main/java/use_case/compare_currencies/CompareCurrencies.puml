@@ -1,0 +1,75 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+package "use_case.compare_currencies" {
+
+  interface CompareCurrenciesInputBoundary {
+    +execute(inputData: CompareCurrenciesInputData): void
+  }
+
+  class CompareCurrenciesInputData {
+    -baseCurrencyName: String
+    -targetCurrencyNames: List<String>
+    +CompareCurrenciesInputData(baseCurrencyName: String, targetCurrencyNames: List<String>)
+    +getBaseCurrencyName(): String
+    +getTargetCurrencyNames(): List<String>
+  }
+
+  class CompareCurrenciesInteractor implements CompareCurrenciesInputBoundary {
+    -dataAccess: ExchangeRateDataAccessInterface
+    -currencyRepository: CurrencyRepository
+    -presenter: CompareCurrenciesOutputBoundary
+    +CompareCurrenciesInteractor(
+        dataAccess: ExchangeRateDataAccessInterface,
+        currencyRepository: CurrencyRepository,
+        presenter: CompareCurrenciesOutputBoundary
+    )
+    +execute(inputData: CompareCurrenciesInputData): void
+  }
+
+  interface CompareCurrenciesOutputBoundary {
+    +present(data: CompareCurrenciesOutputData): void
+    +prepareFailView(errorMessage: String): void
+  }
+
+  class CompareCurrenciesOutputData {
+    -baseCurrencyName: String
+    -targetCurrencyNames: List<String>
+    -rates: List<Double>
+    +CompareCurrenciesOutputData(
+        baseCurrencyName: String,
+        targetCurrencyNames: List<String>,
+        rates: List<Double>
+    )
+    +getBaseCurrencyName(): String
+    +getTargetCurrencyNames(): List<String>
+    +getRates(): List<Double>
+  }
+}
+
+package "use_case.convert" {
+  interface ExchangeRateDataAccessInterface
+  class CurrencyRepository
+}
+
+package "entity" {
+  class Currency
+  class CurrencyConversion {
+    +getRate(): double
+  }
+}
+
+' Relationships
+CompareCurrenciesInputBoundary --> CompareCurrenciesInputData
+CompareCurrenciesInteractor -up-|> CompareCurrenciesInputBoundary
+
+CompareCurrenciesInteractor --> ExchangeRateDataAccessInterface
+CompareCurrenciesInteractor --> CurrencyRepository
+CompareCurrenciesInteractor --> CompareCurrenciesOutputBoundary
+CompareCurrenciesInteractor --> Currency
+CompareCurrenciesInteractor --> CurrencyConversion
+CompareCurrenciesInteractor --> CompareCurrenciesOutputData
+
+CompareCurrenciesOutputBoundary --> CompareCurrenciesOutputData
+
+@enduml
