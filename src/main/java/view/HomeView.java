@@ -7,6 +7,7 @@ import interface_adapter.logged_in.ChangePasswordController;
 import interface_adapter.logged_in.HomeState;
 import interface_adapter.logged_in.HomeViewModel;
 import interface_adapter.logout.LogoutController;
+import interface_adapter.travel_budget.TravelBudgetController;
 
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
@@ -48,6 +49,7 @@ public class HomeView extends JPanel implements ActionListener, PropertyChangeLi
     private ConvertController convertController;
     private ChangePasswordController changePasswordController;
     private LogoutController logoutController;
+    private TravelBudgetController travelBudgetController;
 
     // --- UI Components ---
     private JLabel usernameDisplay;
@@ -58,6 +60,8 @@ public class HomeView extends JPanel implements ActionListener, PropertyChangeLi
     private JButton historicalBtn;
     private JButton logOutBtn;
     private JButton changePasswordBtn;
+    private JButton travelBudgetBtn;
+
 
     public HomeView(HomeViewModel homeViewModel, ViewManagerModel viewManagerModel) {
         this.homeViewModel = homeViewModel;
@@ -151,7 +155,7 @@ public class HomeView extends JPanel implements ActionListener, PropertyChangeLi
 
     private JPanel createNavigationPanel() {
         // Gap between buttons (30px)
-        JPanel panel = new JPanel(new GridLayout(1, 2, 30, 0));
+        JPanel panel = new JPanel(new GridLayout(1, 3, 30, 0));
         panel.setBackground(CARD_COLOR);
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -160,9 +164,11 @@ public class HomeView extends JPanel implements ActionListener, PropertyChangeLi
 
         convertBtn = createStyledButton("Convert Currency", PRIMARY_BTN_COLOR, Color.WHITE);
         historicalBtn = createStyledButton("Historical Trends", PRIMARY_BTN_COLOR, Color.WHITE);
+        travelBudgetBtn = createStyledButton("Travel Budget", PRIMARY_BTN_COLOR, Color.WHITE);
 
         panel.add(convertBtn);
         panel.add(historicalBtn);
+        panel.add(travelBudgetBtn);
         return panel;
     }
 
@@ -225,6 +231,11 @@ public class HomeView extends JPanel implements ActionListener, PropertyChangeLi
 
         logOutBtn.addActionListener(e -> {
             if (logoutController != null) logoutController.execute();
+        });
+
+        travelBudgetBtn.addActionListener(e -> {               // NEW
+            viewManagerModel.setActiveView("travel_budget");   // use the viewName of TravelBudgetView
+            viewManagerModel.firePropertyChanged();
         });
 
         changePasswordBtn.addActionListener(e -> {
@@ -301,4 +312,6 @@ public class HomeView extends JPanel implements ActionListener, PropertyChangeLi
     public void setChangePasswordController(ChangePasswordController controller) { this.changePasswordController = controller; }
     public void setTrendsController(TrendsController controller) { this.trendsController = controller; }
     public void setConvertController(ConvertController controller) { this.convertController = controller; }
+    public void setTravelBudgetController(TravelBudgetController controller) { this.travelBudgetController = controller; }
+
 }

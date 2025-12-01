@@ -7,9 +7,11 @@ import entity.UserFactory;
 import interface_adapter.ViewManagerModel;
 import interface_adapter.compare_currencies.CompareCurrenciesController;
 import interface_adapter.compare_currencies.CompareCurrenciesPresenter;
+import interface_adapter.travel_budget.TravelBudgetViewModel;
+import use_case.travel_budget.*;
+
 import interface_adapter.travel_budget.TravelBudgetController;
 import interface_adapter.travel_budget.TravelBudgetPresenter;
-import interface_adapter.travel_budget.TravelBudgetViewModel;
 import use_case.compare_currencies.CompareCurrenciesInputBoundary;
 import use_case.compare_currencies.CompareCurrenciesInteractor;
 import use_case.compare_currencies.CompareCurrenciesOutputBoundary;
@@ -81,6 +83,9 @@ public class AppBuilder {
     private TrendsView trendsView;
     // NEW: store full currency list so all views can use it
     private java.util.List<String> baseCurrencies;
+
+    private TravelBudgetViewModel travelBudgetViewModel;
+    private TravelBudgetView travelBudgetView;
 
     private ConvertView convertView;
     private final ExchangeRateDataAccessInterface dataAccess = new ExchangeRateHostDAO(currencyRepository);

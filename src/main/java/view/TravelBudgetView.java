@@ -78,7 +78,7 @@ public class TravelBudgetView extends JPanel
         // Home currency row
         JPanel homePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         homePanel.setBackground(BG);
-        JLabel homeLabel = new JLabel("Covert to:");
+        JLabel homeLabel = new JLabel("Convert to:");
         homeLabel.setFont(LABEL_FONT);
         homePanel.add(homeLabel);
 
