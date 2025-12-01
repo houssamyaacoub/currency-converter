@@ -20,13 +20,13 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 
 /**
- * The unified view for the authenticated hub.
+ * The unified view for the home page.
  */
 public class HomeView extends JPanel implements ActionListener, PropertyChangeListener {
 
     public final String viewName = "home";
 
-    // --- UI Constants (SCALED UP FOR LARGER WINDOW) ---
+    // --- UI Constants ---
     private static final Font TITLE_FONT = new Font("Segoe UI", Font.BOLD, 32); // Was 24
     private static final Font SUBTITLE_FONT = new Font("Segoe UI", Font.PLAIN, 20); // Was 16
     private static final Font LABEL_FONT = new Font("Segoe UI", Font.BOLD, 14); // Was 12
@@ -150,7 +150,7 @@ public class HomeView extends JPanel implements ActionListener, PropertyChangeLi
     }
 
     private JPanel createNavigationPanel() {
-        // Increased gap between buttons (30px)
+        // Gap between buttons (30px)
         JPanel panel = new JPanel(new GridLayout(1, 2, 30, 0));
         panel.setBackground(CARD_COLOR);
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -297,6 +297,7 @@ public class HomeView extends JPanel implements ActionListener, PropertyChangeLi
 
     public String getViewName() { return viewName; }
 
+    // Necessary setters
     public void setLogoutController(LogoutController controller) { this.logoutController = controller; }
     public void setChangePasswordController(ChangePasswordController controller) { this.changePasswordController = controller; }
     public void setTrendsController(TrendsController controller) { this.trendsController = controller; }
