@@ -33,6 +33,10 @@ import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.axis.CategoryAxis;
 import org.jfree.chart.renderer.category.BarRenderer;
 
+import interface_adapter.offline_viewing.OfflineViewModel;
+import interface_adapter.offline_viewing.OfflineViewController;
+
+
 
 /**
  * ConvertView
@@ -64,6 +68,10 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     private final ViewManagerModel viewManagerModel;
     private final List<String> baseCurrencies;
 
+    // Offline Viewing
+    private OfflineViewModel offlineViewModel;           // NEW
+    private OfflineViewController offlineViewController;
+
     // Controllers
     private ConvertController convertController;
     private FavouriteCurrencyController favouriteCurrencyController;
@@ -91,6 +99,8 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     private final JLabel errorLabel;
     private final JLabel lastUpdatedLabel;
     private final JCheckBox autoRefreshCheckBox;
+
+    private final JLabel offlineStatusLabel;
 
     private javax.swing.Timer autoRefreshTimer;
     private static final DateTimeFormatter LAST_UPDATED_FMT =
@@ -145,6 +155,10 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         lastUpdatedLabel = new JLabel("Last update: --");
         lastUpdatedLabel.setFont(new Font("Segoe UI", Font.ITALIC, 11));
         lastUpdatedLabel.setForeground(Color.GRAY);
+
+        offlineStatusLabel = new JLabel(" ");
+        offlineStatusLabel.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+        offlineStatusLabel.setForeground(Color.GRAY);
 
         initializeUI();
         setupListeners();
@@ -228,6 +242,10 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         refreshPanel.add(autoRefreshCheckBox);
         refreshPanel.add(Box.createHorizontalStrut(10));
         refreshPanel.add(lastUpdatedLabel);
+
+        refreshPanel.add(Box.createHorizontalStrut(10));
+        refreshPanel.add(offlineStatusLabel);
+
         centerPanel.add(refreshPanel);
 
         card.add(centerPanel, BorderLayout.CENTER);
@@ -294,6 +312,11 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
             @Override
             public void componentShown(ComponentEvent e) {
                 updateCurrencyDropdown();
+
+                if (offlineViewController != null) {
+                    offlineViewController.loadOfflineRates();
+                }
+
             }
         });
     }
@@ -453,42 +476,78 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     }
 
     // --- PropertyChangeListener ---
-
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        ConvertState state = viewModel.getState();
+        Object source = evt.getSource();
 
-        // 1. Single Conversion Update
-        if (state.getError() != null) {
-            errorLabel.setText("Error: " + state.getError());
-            resultLabel.setText("Conversion Failed");
-            rateDetailLabel.setText("");
-        } else {
-            errorLabel.setText("");
-            if (state.getConvertedAmountResult() != null && !state.getConvertedAmountResult().equals("0.00")) {
-                resultLabel.setText(state.getAmount() + " " + state.getFromCurrency() + " = " + state.getConvertedAmountResult() + " " + state.getToCurrency());
-                rateDetailLabel.setText(state.getRateDetails());
-                lastUpdatedLabel.setText("Last update: " + LocalDateTime.now().format(LAST_UPDATED_FMT));
+        // -------------------------------
+        // 1) ONLINE ConvertViewModel update
+        // -------------------------------
+        if (source == viewModel) {
+            ConvertState state = viewModel.getState();
+
+            if (state.getError() != null) {
+                errorLabel.setText("Error: " + state.getError());
+                resultLabel.setText("Conversion Failed");
+                rateDetailLabel.setText("");
+            } else {
+                errorLabel.setText("");
+
+                if (state.getConvertedAmountResult() != null
+                        && !state.getConvertedAmountResult().equals("0.00")) {
+
+                    resultLabel.setText(
+                            state.getAmount() + " " + state.getFromCurrency()
+                                    + " = " + state.getConvertedAmountResult()
+                                    + " " + state.getToCurrency()
+                    );
+
+                    rateDetailLabel.setText(state.getRateDetails());
+
+                    // ONLINE success -> replace timestamps
+                    lastUpdatedLabel.setText(
+                            "Last update: " + LocalDateTime.now().format(LAST_UPDATED_FMT)
+                    );
+
+                    // ONLINE success clears offline message
+                    offlineStatusLabel.setText(" ");
+                }
             }
-            // Updates 'Last updated" on every successful conversion
-            lastUpdatedLabel.setText(
-                    "Last update: " + LocalDateTime.now().format(LAST_UPDATED_FMT)
-            );
 
+            // MULTI-COMPARE
+            if (state.getCompareTargets() != null && !state.getCompareTargets().isEmpty()) {
+                List<String> targets = new ArrayList<>(state.getCompareTargets());
+                List<Double> rates = new ArrayList<>(state.getCompareRates());
+
+                // Clear state to avoid re-trigger
+                state.setCompareTargets(new ArrayList<>());
+                viewModel.setState(state);
+
+                showComparisonChart(state.getFromCurrency(), targets, rates);
+            }
+
+            return;   // IMPORTANT: stop here
         }
 
-        // 2. Multi-Compare Update
-        if (state.getCompareTargets() != null && !state.getCompareTargets().isEmpty()) {
-            List<String> targets = new ArrayList<>(state.getCompareTargets());
-            List<Double> rates = new ArrayList<>(state.getCompareRates());
+        // -------------------------------
+        // 2) OFFLINE OfflineViewModel update
+        // -------------------------------
+        if (offlineViewModel != null && source == offlineViewModel) {
 
-            // Clear state immediately to prevent re-triggering
-            state.setCompareTargets(new ArrayList<>());
-            viewModel.setState(state);
+            // 2a. Show pretty status string
+            offlineStatusLabel.setText(offlineViewModel.getStatusMessage());
 
-            showComparisonChart(state.getFromCurrency(), targets, rates);
+            // 2b. Show timestamp in Last Update area
+            if (offlineViewModel.getTimestamp() != null) {
+                lastUpdatedLabel.setText(
+                        "Last update: " + offlineViewModel.getTimestamp()
+                                .atZone(java.time.ZoneId.systemDefault())
+                                .format(LAST_UPDATED_FMT)
+                );
+            }
         }
     }
+
 
     // --- Dependency Setters ---
     public void setConvertController(ConvertController c) { this.convertController = c; }
@@ -499,6 +558,18 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     public void setRecentCurrencyDAO(RecentCurrencyDataAccessInterface dao) { this.recentDAO = dao; updateCurrencyDropdown(); }
     public void setRecentCurrencyViewModel(RecentCurrencyViewModel vm) { this.recentCurrencyViewModel = vm; vm.addPropertyChangeListener(e -> updateCurrencyDropdown()); }
     public void setFavouriteCurrencyViewModel(FavouriteCurrencyViewModel vm) { this.favouriteCurrencyViewModel = vm; vm.addPropertyChangeListener(e -> updateCurrencyDropdown()); }
+
+    // --- Offline Viewing dependency setters ---
+    public void setOfflineViewModel(OfflineViewModel vm) {
+        this.offlineViewModel = vm;
+        if (vm != null) {
+            vm.addPropertyChangeListener(this);
+        }
+    }
+
+    public void setOfflineViewController(OfflineViewController controller) {
+        this.offlineViewController = controller;
+    }
 
     private void updateCurrencyDropdown() {
         java.util.List<String> ordered = null;

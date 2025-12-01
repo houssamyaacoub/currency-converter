@@ -35,7 +35,9 @@ public class Main {
                 .addRecentCurrencyUseCase()
                 .addTravelBudgetUseCase()
                 .addConvertUseCase()
+                .addOfflineViewingUseCase()
                 .build();
+
 
         application.pack();
         application.setLocationRelativeTo(null);
