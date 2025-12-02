@@ -9,7 +9,6 @@ import interface_adapter.favourite_currency.FavouriteCurrencyViewModel;
 import interface_adapter.recent_currency.RecentCurrencyController;
 import interface_adapter.recent_currency.RecentCurrencyViewModel;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
-import use_case.recent_currency.RecentCurrencyDataAccessInterface;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -61,7 +60,6 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
 
     private RecentCurrencyController recentCurrencyController;
     private RecentCurrencyViewModel recentCurrencyViewModel;
-    private RecentCurrencyDataAccessInterface recentDAO;
 
     // --- UI Components ---
     private final JPanel chartContainer;
@@ -236,18 +234,36 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
         this.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentShown(java.awt.event.ComponentEvent e) {
+
+                if (recentCurrencyController != null
+                        && homeViewModel != null
+                        && homeViewModel.getState() != null) {
+
+                    String userId = homeViewModel.getState().getUsername();
+                    if (userId != null && !userId.isEmpty()) {
+                        recentCurrencyController.execute(userId, null, null);
+                    }
+                }
+
                 updateCurrencyDropdown();
             }
         });
+
     }
 
     private void handleFavouriteAction(Object selectedItem) {
-        if (favouriteCurrencyController == null || homeViewModel == null || homeViewModel.getState() == null) return;
+        if (homeViewModel == null || homeViewModel.getState() == null) return;
 
         String userId = homeViewModel.getState().getUsername();
         if (userId == null || userId.isEmpty() || selectedItem == null) return;
 
-        favouriteCurrencyController.execute(userId, selectedItem.toString(), true);
+        if (favouriteCurrencyController != null) {
+            favouriteCurrencyController.execute(userId, selectedItem.toString(), true);
+        }
+
+        if (recentCurrencyController != null) {
+            recentCurrencyController.execute(userId, null, null);
+        }
     }
 
     /**
@@ -302,14 +318,17 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
     private void updateCurrencyDropdown() {
         List<String> ordered = null;
 
-        // Save current selections so we can restore them later
         Object currentFrom = fromBox.getSelectedItem();
         Object currentTo = toBox.getSelectedItem();
 
-        if (recentDAO != null && homeViewModel != null && homeViewModel.getState() != null) {
-            String userId = homeViewModel.getState().getUsername();
-            if (userId != null && !userId.isEmpty()) {
-                ordered = recentDAO.getOrderedCurrenciesForUser(userId);
+        if (recentCurrencyViewModel != null
+                && recentCurrencyViewModel.getState() != null) {
+
+            List<String> fromVm =
+                    recentCurrencyViewModel.getState().getOrderedCurrencyList();
+
+            if (fromVm != null && !fromVm.isEmpty()) {
+                ordered = new ArrayList<>(fromVm);
             }
         }
 
@@ -317,20 +336,23 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
             ordered = new ArrayList<>(baseCurrencies);
         }
 
-        if (ordered == null || ordered.isEmpty()) return;
-
-        List<String> finalOrdered = ordered;
+        if (ordered == null || ordered.isEmpty()) {
+            return;
+        }
 
         fromBox.removeAllItems();
         toBox.removeAllItems();
-        for (String code : finalOrdered) {
+        for (String code : ordered) {
             fromBox.addItem(code);
             toBox.addItem(code);
         }
-        if (currentFrom != null) fromBox.setSelectedItem(currentFrom);
-        if (currentTo != null) toBox.setSelectedItem(currentTo);
 
-
+        if (currentFrom != null) {
+            fromBox.setSelectedItem(currentFrom);
+        }
+        if (currentTo != null) {
+            toBox.setSelectedItem(currentTo);
+        }
     }
 
     @Override
@@ -372,10 +394,7 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
         this.recentCurrencyViewModel = vm;
         if (this.recentCurrencyViewModel != null) this.recentCurrencyViewModel.addPropertyChangeListener(evt -> updateCurrencyDropdown());
     }
-    public void setRecentCurrencyDAO(RecentCurrencyDataAccessInterface dao) {
-        this.recentDAO = dao;
-        updateCurrencyDropdown();
-    }
+
     public String getViewName() { return this.viewName; }
 
     // --- Helper Methods ---

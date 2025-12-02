@@ -12,6 +12,8 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Iterator;
+
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -319,6 +321,16 @@ class TrendsInteractorTest {
         public Currency getByCode(String code) { return null; } // Unused
         @Override
         public List<Currency> getAllCurrencies() { return Collections.emptyList(); } // Unused
+
+        /**
+         * Returns an iterator over currencies. For this stub we simply
+         * return an empty iterator because the historic-trends tests do
+         * not depend on iterating over all currencies.
+         */
+        @Override
+        public Iterator<Currency> getCurrencyIterator() {
+            return Collections.emptyIterator();
+        }
     }
 
     /**

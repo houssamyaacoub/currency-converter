@@ -8,7 +8,6 @@ import interface_adapter.favourite_currency.FavouriteCurrencyController;
 import interface_adapter.favourite_currency.FavouriteCurrencyViewModel;
 import interface_adapter.recent_currency.RecentCurrencyController;
 import interface_adapter.recent_currency.RecentCurrencyViewModel;
-import use_case.recent_currency.RecentCurrencyDataAccessInterface;
 import interface_adapter.logged_in.HomeViewModel;
 import interface_adapter.compare_currencies.CompareCurrenciesController;
 
@@ -81,7 +80,6 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     // View Models & DAO
     private RecentCurrencyViewModel recentCurrencyViewModel;
     private FavouriteCurrencyViewModel favouriteCurrencyViewModel;
-    private RecentCurrencyDataAccessInterface recentDAO;
 
     // --- UI Components ---
     private final JComboBox<String> fromBox;
@@ -311,14 +309,26 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         this.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentShown(ComponentEvent e) {
+
+                if (recentCurrencyController != null
+                        && homeViewModel != null
+                        && homeViewModel.getState() != null) {
+
+                    String userId = homeViewModel.getState().getUsername();
+                    if (userId != null && !userId.isEmpty()) {
+
+                        recentCurrencyController.execute(userId, null, null);
+                    }
+                }
+
                 updateCurrencyDropdown();
 
                 if (offlineViewController != null) {
                     offlineViewController.loadOfflineRates();
                 }
-
             }
         });
+
     }
 
     private void handleConvertAction() {
@@ -355,13 +365,21 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     }
 
     private void handleFavouriteAction(Object selected) {
-        if (favouriteCurrencyController == null || homeViewModel == null || homeViewModel.getState() == null) return;
+        if (homeViewModel == null || homeViewModel.getState() == null) return;
 
         String userId = homeViewModel.getState().getUsername();
         if (userId == null || userId.isEmpty() || selected == null) return;
 
-        favouriteCurrencyController.execute(userId, selected.toString(), true);
+
+        if (favouriteCurrencyController != null) {
+            favouriteCurrencyController.execute(userId, selected.toString(), true);
+        }
+
+        if (recentCurrencyController != null) {
+            recentCurrencyController.execute(userId, null, null);
+        }
     }
+
 
     private void handleMultiCompareAction() {
         if (compareCurrenciesController == null) {
@@ -555,9 +573,20 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     public void setRecentCurrencyController(RecentCurrencyController c) { this.recentCurrencyController = c; }
     public void setCompareCurrenciesController(CompareCurrenciesController c) { this.compareCurrenciesController = c; }
 
-    public void setRecentCurrencyDAO(RecentCurrencyDataAccessInterface dao) { this.recentDAO = dao; updateCurrencyDropdown(); }
-    public void setRecentCurrencyViewModel(RecentCurrencyViewModel vm) { this.recentCurrencyViewModel = vm; vm.addPropertyChangeListener(e -> updateCurrencyDropdown()); }
-    public void setFavouriteCurrencyViewModel(FavouriteCurrencyViewModel vm) { this.favouriteCurrencyViewModel = vm; vm.addPropertyChangeListener(e -> updateCurrencyDropdown()); }
+    public void setRecentCurrencyViewModel(RecentCurrencyViewModel vm) {
+        this.recentCurrencyViewModel = vm;
+        if (vm != null) {
+            vm.addPropertyChangeListener(e -> updateCurrencyDropdown());
+        }
+    }
+
+    public void setFavouriteCurrencyViewModel(FavouriteCurrencyViewModel vm) {
+        this.favouriteCurrencyViewModel = vm;
+        if (vm != null) {
+            vm.addPropertyChangeListener(e -> updateCurrencyDropdown());
+        }
+    }
+
 
     // --- Offline Viewing dependency setters ---
     public void setOfflineViewModel(OfflineViewModel vm) {
@@ -574,18 +603,27 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     private void updateCurrencyDropdown() {
         java.util.List<String> ordered = null;
 
-        // Save current selections so we can restore them later
         Object currentFrom = fromBox.getSelectedItem();
         Object currentTo = toBox.getSelectedItem();
 
-        // 1. get recent/frequent ordering from DAO
-        if (recentDAO != null && homeViewModel != null && homeViewModel.getState() != null) {
-            String userId = homeViewModel.getState().getUsername();
-            if (userId != null && !userId.isEmpty()) ordered = recentDAO.getOrderedCurrenciesForUser(userId);
-        }
-        if ((ordered == null || ordered.isEmpty()) && baseCurrencies != null) ordered = baseCurrencies;
+        if (recentCurrencyViewModel != null
+                && recentCurrencyViewModel.getState() != null) {
 
-        if (ordered == null) return;
+            java.util.List<String> fromVm =
+                    recentCurrencyViewModel.getState().getOrderedCurrencyList();
+
+            if (fromVm != null && !fromVm.isEmpty()) {
+                ordered = fromVm;
+            }
+        }
+
+        if ((ordered == null || ordered.isEmpty()) && baseCurrencies != null) {
+            ordered = baseCurrencies;
+        }
+
+        if (ordered == null || ordered.isEmpty()) {
+            return;
+        }
 
         fromBox.removeAllItems();
         toBox.removeAllItems();
@@ -594,9 +632,14 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
             toBox.addItem(code);
         }
 
-        if (currentFrom != null) fromBox.setSelectedItem(currentFrom);
-        if (currentTo != null) toBox.setSelectedItem(currentTo);
+        if (currentFrom != null) {
+            fromBox.setSelectedItem(currentFrom);
+        }
+        if (currentTo != null) {
+            toBox.setSelectedItem(currentTo);
+        }
     }
+
 
     // --- Helper UI Generators ---
     private void addLabel(JPanel panel, String text, int x, int y, GridBagConstraints gbc) {
