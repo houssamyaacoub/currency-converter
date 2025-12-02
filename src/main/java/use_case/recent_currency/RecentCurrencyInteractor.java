@@ -49,10 +49,6 @@ public class RecentCurrencyInteractor implements RecentCurrencyInputBoundary {
         String from = normalize(inputData.getFromCurrencyCode());
         String to = normalize(inputData.getToCurrencyCode());
 
-        if (from == null && to == null) {
-            presenter.prepareFailView("No valid currencies provided.");
-            return;
-        }
 
         // 1. Record usage for each valid currency.
         if (from != null) {
