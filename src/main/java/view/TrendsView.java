@@ -251,6 +251,16 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
 
     }
 
+    /**
+     * Handles clicking the "★" button in the trends view for either
+     * the FROM or TO currency.
+     * Delegates to the Favourite use case to toggle the favourite
+     * status, then triggers the RecentCurrency use case so that
+     * dropdown ordering is refreshed.
+     *
+     * @param selectedItem the currently selected currency in the combo box
+     */
+
     private void handleFavouriteAction(Object selectedItem) {
         if (homeViewModel == null || homeViewModel.getState() == null) return;
 
@@ -355,6 +365,12 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
         }
     }
 
+    /**
+     * Reacts to {@link TrendsViewModel} state changes by rebuilding the chart.
+     * If there are no dates in the new state, a simple "No Data Available"
+     * label is shown instead of a chart.
+     */
+
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         if ("state".equals(evt.getPropertyName())) {
@@ -383,13 +399,45 @@ public class TrendsView extends JPanel implements ActionListener, PropertyChange
     public void actionPerformed(ActionEvent e) {}
 
     // --- Dependency Injection ---
+    /**
+     * Injects the controller for the historic trends use case.
+     *
+     * @param controller the trends controller to use
+     */
     public void setTrendsController(TrendsController controller) { this.trendsController = controller; }
+    /**
+     * Injects the controller used to toggle favourite currencies
+     * from within the trends view.
+     *
+     * @param controller the favourite currency controller
+     */
     public void setFavouriteCurrencyController(FavouriteCurrencyController controller) { this.favouriteCurrencyController = controller; }
+    /**
+     * Injects the view model for the Favourite Currency use case.
+     * A listener is registered so that the currency dropdowns are
+     * rebuilt whenever the favourite list changes.
+     *
+     * @param vm the favourite currency view model
+     */
     public void setFavouriteCurrencyViewModel(FavouriteCurrencyViewModel vm) {
         this.favouriteCurrencyViewModel = vm;
         if (this.favouriteCurrencyViewModel != null) this.favouriteCurrencyViewModel.addPropertyChangeListener(evt -> updateCurrencyDropdown());
     }
+    /**
+     * Injects the controller used to update the Recent / Frequently
+     * Used currencies from within the trends view.
+     *
+     * @param controller the recent currency controller
+     */
     public void setRecentCurrencyController(RecentCurrencyController controller) { this.recentCurrencyController = controller; }
+    /**
+     * Injects the view model for the Recent Currency use case.
+     * <p>
+     * A listener is registered so that the currency dropdowns are
+     * rebuilt whenever the ordered recent list changes.
+     *
+     * @param vm the recent currency view model
+     */
     public void setRecentCurrencyViewModel(RecentCurrencyViewModel vm) {
         this.recentCurrencyViewModel = vm;
         if (this.recentCurrencyViewModel != null) this.recentCurrencyViewModel.addPropertyChangeListener(evt -> updateCurrencyDropdown());

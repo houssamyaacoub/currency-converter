@@ -5,7 +5,6 @@ import use_case.recent_currency.RecentCurrencyOutputData;
 
 /**
  * Presenter for the Recent / Frequently Used Currencies use case (Use Case 8).
- *
  * Converts the output data into the RecentCurrencyState
  * and triggers the ViewModel to notify UI listeners.
  */
@@ -41,7 +40,8 @@ public class RecentCurrencyPresenter implements RecentCurrencyOutputBoundary {
         state.setErrorMessage("");
 
         viewModel.setState(state);
-        viewModel.firePropertyChange();   // ✔ correct method
+        // ✔ correct method
+        viewModel.firePropertyChange();
     }
 
     /**
@@ -59,6 +59,7 @@ public class RecentCurrencyPresenter implements RecentCurrencyOutputBoundary {
         state.setErrorMessage(errorMessage);
 
         viewModel.setState(state);
-        viewModel.firePropertyChange();   // ✔ correct method
+        // ✔ correct method
+        viewModel.firePropertyChange();
     }
 }

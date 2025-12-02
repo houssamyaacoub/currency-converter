@@ -5,10 +5,8 @@ import java.util.Map;
 
 /**
  * Data access interface for the Recent / Frequently Used Currencies use case (Use Case 8).
- *
  * Implementations of this interface belong in the data_access layer and may use
  * Preferences, files, or a database to store usage counts.
- *
  * They may also delegate to other gateways (for favourites and supported currencies).
  */
 public interface RecentCurrencyDataAccessInterface {
@@ -59,5 +57,6 @@ public interface RecentCurrencyDataAccessInterface {
      * @param userId the unique identifier of the user
      * @return an ordered list of currency strings
      */
+
     List<String> getOrderedCurrenciesForUser(String userId);
 }

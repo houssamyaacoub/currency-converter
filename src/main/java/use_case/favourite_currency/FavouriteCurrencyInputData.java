@@ -2,7 +2,6 @@ package use_case.favourite_currency;
 
 /**
  * Input data for the Favourite Currency use case (Use Case 5).
- *
  * This object is created by the controller and passed to the interactor.
  */
 public class FavouriteCurrencyInputData {
@@ -27,13 +26,32 @@ public class FavouriteCurrencyInputData {
         this.markAsFavourite = markAsFavourite;
     }
 
+    /**
+     * Returns the identifier of the user whose favourites are being modified.
+     *
+     * @return the user id
+     */
+
     public String getUserId() {
         return userId;
     }
 
+    /**
+     * Returns the currency code to be toggled as a favourite.
+     *
+     * @return the currency code (for example, {@code "CAD"})
+     */
+
     public String getCurrencyCode() {
         return currencyCode;
     }
+
+    /**
+     * Indicates whether the currency should be marked as favourite ({@code true})
+     * or removed from favourites ({@code false}).
+     *
+     * @return {@code true} to add to favourites, {@code false} to remove
+     */
 
     public boolean isMarkAsFavourite() {
         return markAsFavourite;

@@ -5,7 +5,6 @@ import use_case.favourite_currency.FavouriteCurrencyOutputData;
 
 /**
  * Presenter for the Favourite Currency use case (Use Case 5).
- *
  * Converts the output data into the FavouriteCurrencyState
  * and notifies the ViewModel to update the UI.
  */
@@ -39,7 +38,8 @@ public class FavouriteCurrencyPresenter implements FavouriteCurrencyOutputBounda
         state.setErrorMessage("");
 
         viewModel.setState(state);
-        viewModel.firePropertyChange();   // ← matches teammate's code
+        // Notify listeners that the state has changed (matches teammate's presenter code).
+        viewModel.firePropertyChange();
     }
 
     /**
@@ -56,6 +56,7 @@ public class FavouriteCurrencyPresenter implements FavouriteCurrencyOutputBounda
         state.setErrorMessage(errorMessage);
 
         viewModel.setState(state);
-        viewModel.firePropertyChange();   // ← matches teammate's code
+        // Notify listeners that the state has changed (matches teammate's presenter code).
+        viewModel.firePropertyChange();
     }
 }
