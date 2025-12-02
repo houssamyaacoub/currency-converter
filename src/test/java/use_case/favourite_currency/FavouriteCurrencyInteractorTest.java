@@ -46,10 +46,12 @@ class FavouriteCurrencyInteractorTest {
 
         /**
          * {@inheritDoc}
+         *
+         * In this in-memory implementation we consider a currency to "exist"
+         * if the code is non-null and not blank.
          */
         @Override
         public boolean currencyExists(String currencyCode) {
-            // In tests we only care that the code is non-null and not blank.
             return currencyCode != null && !currencyCode.trim().isEmpty();
         }
 
@@ -105,26 +107,26 @@ class FavouriteCurrencyInteractorTest {
         // Act
         interactor.execute(input);
 
-        // Assert: DAO state is in sync with the output data.
+        // Assert: gateway should have the new favourite stored.
         assertEquals(List.of("CAD"), gateway.getFavouritesForUser(userId));
     }
 
     /**
-     * Test that toggling an existing favourite currency off removes it
-     * from the list of favourites for that user.
+     * Test that toggling an existing favourite off removes it from the list.
      */
     @Test
     void removeExistingFavourite_successToggleOff() {
         // Arrange
         InMemoryFavouriteGateway gateway = new InMemoryFavouriteGateway();
-        String userId = "alice";
-        gateway.setFavourites(userId, List.of("CAD"));  // Already a favourite
+        String userId = "bob";
+        gateway.setFavourites(userId, new ArrayList<>(List.of("USD", "EUR")));
 
         FavouriteCurrencyOutputBoundary presenter = new FavouriteCurrencyOutputBoundary() {
             @Override
             public void prepareSuccessView(FavouriteCurrencyOutputData outputData) {
+                // After toggling off "USD", only "EUR" should remain.
                 assertEquals(userId, outputData.getUserId());
-                assertTrue(outputData.getFavouriteCurrencies().isEmpty());
+                assertEquals(List.of("EUR"), outputData.getFavouriteCurrencies());
             }
 
             @Override
@@ -136,19 +138,20 @@ class FavouriteCurrencyInteractorTest {
         FavouriteCurrencyInputBoundary interactor =
                 new FavouriteCurrencyInteractor(gateway, presenter);
 
+        // Toggle off an existing favourite.
         FavouriteCurrencyInputData input =
-                new FavouriteCurrencyInputData(userId, "CAD", true);
+                new FavouriteCurrencyInputData(userId, "USD", true);
 
         // Act
         interactor.execute(input);
 
-        // Assert: the favourite has been removed.
-        assertTrue(gateway.getFavouritesForUser(userId).isEmpty());
+        // Assert
+        assertEquals(List.of("EUR"), gateway.getFavouritesForUser(userId));
     }
 
     /**
-     * Test that an empty user id is treated as "user not logged in"
-     * and that the interactor calls {@code prepareFailView}.
+     * Test that attempting to toggle favourites while the user is not logged in
+     * (empty user id) results in a failure.
      */
     @Test
     void failure_userNotLoggedIn() {
@@ -158,12 +161,11 @@ class FavouriteCurrencyInteractorTest {
         FavouriteCurrencyOutputBoundary presenter = new FavouriteCurrencyOutputBoundary() {
             @Override
             public void prepareSuccessView(FavouriteCurrencyOutputData outputData) {
-                fail("Success not expected");
+                fail("Success not expected when user id is empty.");
             }
 
             @Override
             public void prepareFailView(String errorMessage) {
-                // NOTE: Adjust this string if you change it in FavouriteCurrencyInteractor.
                 assertEquals("User is not logged in.", errorMessage);
             }
         };
@@ -179,24 +181,23 @@ class FavouriteCurrencyInteractorTest {
     }
 
     /**
-     * Test that a non-existing user id produces a failure view
-     * with the expected error message.
+     * Test that toggling favourites for a non-existent user fails with
+     * a clear error message.
      */
     @Test
     void failure_userDoesNotExist() {
         // Arrange
         InMemoryFavouriteGateway gateway = new InMemoryFavouriteGateway();
-        // The gateway does not contain this user id, so userExists returns false.
+        String userId = "ghost"; // user not present in the gateway
 
         FavouriteCurrencyOutputBoundary presenter = new FavouriteCurrencyOutputBoundary() {
             @Override
             public void prepareSuccessView(FavouriteCurrencyOutputData outputData) {
-                fail("Success not expected");
+                fail("Success not expected for a non-existent user.");
             }
 
             @Override
             public void prepareFailView(String errorMessage) {
-                // NOTE: Adjust this string if you change it in FavouriteCurrencyInteractor.
                 assertEquals("User does not exist.", errorMessage);
             }
         };
@@ -205,27 +206,27 @@ class FavouriteCurrencyInteractorTest {
                 new FavouriteCurrencyInteractor(gateway, presenter);
 
         FavouriteCurrencyInputData input =
-                new FavouriteCurrencyInputData("ghost", "CAD", true);
+                new FavouriteCurrencyInputData(userId, "CAD", true);
 
         // Act
         interactor.execute(input);
     }
 
     /**
-     * Test that an empty or blank currency code produces a failure view
-     * with the expected error message.
+     * Test that providing an empty currency code results in a failure and that
+     * no favourites are modified.
      */
     @Test
     void failure_currencyCodeEmpty() {
         // Arrange
         InMemoryFavouriteGateway gateway = new InMemoryFavouriteGateway();
         String userId = "alice";
-        gateway.setFavourites(userId, Collections.emptyList());
+        gateway.setFavourites(userId, new ArrayList<>());
 
         FavouriteCurrencyOutputBoundary presenter = new FavouriteCurrencyOutputBoundary() {
             @Override
             public void prepareSuccessView(FavouriteCurrencyOutputData outputData) {
-                fail("Success not expected");
+                fail("Success not expected when currency code is empty.");
             }
 
             @Override
@@ -240,6 +241,44 @@ class FavouriteCurrencyInteractorTest {
 
         FavouriteCurrencyInputData input =
                 new FavouriteCurrencyInputData(userId, "   ", true);
+
+        // Act
+        interactor.execute(input);
+    }
+
+    /**
+     * When the user already has 5 favourite currencies, attempting to add a sixth
+     * should fail and leave the stored favourites unchanged.
+     */
+    @Test
+    void failure_cannotExceedMaximumOfFiveFavourites() {
+        // Arrange: user with exactly 5 favourite currencies already stored.
+        InMemoryFavouriteGateway gateway = new InMemoryFavouriteGateway();
+        String userId = "user-max";
+
+        List<String> initialFavourites = List.of("C1", "C2", "C3", "C4", "C5");
+        gateway.setFavourites(userId, initialFavourites);
+
+        FavouriteCurrencyOutputBoundary presenter = new FavouriteCurrencyOutputBoundary() {
+            @Override
+            public void prepareSuccessView(FavouriteCurrencyOutputData outputData) {
+                fail("Success not expected when adding a sixth favourite currency.");
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                // The interactor should reject the operation with a clear message
+                // and not modify the stored favourites.
+                assertEquals("You can have at most 5 favourite currencies.", errorMessage);
+                assertEquals(initialFavourites, gateway.getFavouritesForUser(userId));
+            }
+        };
+
+        FavouriteCurrencyInputBoundary interactor =
+                new FavouriteCurrencyInteractor(gateway, presenter);
+
+        FavouriteCurrencyInputData input =
+                new FavouriteCurrencyInputData(userId, "C6", true);
 
         // Act
         interactor.execute(input);

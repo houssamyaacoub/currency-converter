@@ -368,24 +368,24 @@ public class AppBuilder {
         final use_case.recent_currency.RecentCurrencyDataAccessInterface recentDAO =
                 (use_case.recent_currency.RecentCurrencyDataAccessInterface) userDataAccessObject;
 
-        // 3. VM + Presenter
+        // 1. VM + Presenter
         final interface_adapter.recent_currency.RecentCurrencyViewModel recentVM =
                 new interface_adapter.recent_currency.RecentCurrencyViewModel();
         final interface_adapter.recent_currency.RecentCurrencyPresenter recentPresenter =
                 new interface_adapter.recent_currency.RecentCurrencyPresenter(recentVM);
 
-        // 4. Interactor
+        // 2. Interactor
         final use_case.recent_currency.RecentCurrencyInputBoundary recentInteractor =
                 new use_case.recent_currency.RecentCurrencyInteractor(
                         recentDAO,
                         recentPresenter
                 );
 
-        // 5. Controller
+        // 3. Controller
         final interface_adapter.recent_currency.RecentCurrencyController recentController =
                 new interface_adapter.recent_currency.RecentCurrencyController(recentInteractor);
 
-        // 6. Inject into ConvertView
+        // 4. put VM + Controller inject to View
         convertView.setRecentCurrencyViewModel(recentVM);
         convertView.setRecentCurrencyController(recentController);
 
@@ -396,6 +396,7 @@ public class AppBuilder {
 
         return this;
     }
+
 
 
 

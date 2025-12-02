@@ -11,6 +11,9 @@ import java.time.LocalDate;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import java.util.Iterator;
+
+
 
 /**
  * Tests for Use Case 6: CompareCurrenciesInteractor.
@@ -51,6 +54,18 @@ class CompareCurrenciesInteractorTest {
                 throw new IllegalArgumentException("Unknown currency: " + name);
             }
             return c;
+        }
+
+        /**
+         * Returns an iterator over all currencies stored in this stub.
+         * <p>
+         * This is only needed to satisfy the {@link CurrencyRepository}
+         * interface for the tests; the compare-currencies tests do not
+         * depend on the iteration order beyond containing the same elements.
+         */
+        @Override
+        public Iterator<Currency> getCurrencyIterator() {
+            return byName.values().iterator();
         }
     }
 

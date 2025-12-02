@@ -18,6 +18,13 @@ public class TravelBudgetInteractor implements TravelBudgetInputBoundary {
     private final CurrencyRepository currencyRepository;
     private final TravelBudgetOutputBoundary presenter;
 
+    /**
+     * Creates a new TravelBudgetInteractor.
+     *
+     * @param dataAccess          the API interface used to fetch exchange rates
+     * @param currencyRepository  the repository that provides Currency objects by name
+     * @param presenter           the output boundary that formats and displays the results
+     */
     public TravelBudgetInteractor(ExchangeRateDataAccessInterface dataAccess,
                                   CurrencyRepository currencyRepository,
                                   TravelBudgetOutputBoundary presenter) {
