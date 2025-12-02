@@ -4,7 +4,6 @@ import interface_adapter.ViewModel;
 
 /**
  * ViewModel for the Favourite Currency feature (Use Case 5).
- *
  * The view listens to this ViewModel for property changes and updates the UI
  * whenever the FavouriteCurrencyState changes.
  */

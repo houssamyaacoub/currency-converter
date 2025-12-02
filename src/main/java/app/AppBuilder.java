@@ -76,6 +76,14 @@ import java.util.ArrayList;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * Builder responsible for wiring together all views, view models,
+ * controllers, interactors, and data access objects of the application.
+ * This class lives in the outer "frameworks &amp; drivers" layer and exposes
+ * a fluent API (the {@code addXxx...} methods) to configure the application
+ * before finally calling {@link #build()}.
+ */
+
 public class AppBuilder {
     private final JPanel cardPanel = new JPanel();
     private final CardLayout cardLayout = new CardLayout();
@@ -85,6 +93,7 @@ public class AppBuilder {
     // set which data access implementation to use, can be any
     // of the classes from the data_access package
 
+    // Data access for currencies and users
     private final CurrencyListDAO currencyRepository = new CurrencyListDAO();
     final FileUserDataAccessObject userDataAccessObject =
             new FileUserDataAccessObject("users.csv", userFactory, currencyRepository);
@@ -113,7 +122,11 @@ public class AppBuilder {
     private final ExchangeRateDataAccessInterface dataAccess = new ExchangeRateHostDAO(currencyRepository);
 
 
-
+    /**
+     * Creates a new {@code AppBuilder} and initializes shared UI infrastructure
+     * such as the {@link CardLayout}, {@link ViewManagerModel} and the list
+     * of base currencies to be shown in relevant views.
+     */
     public AppBuilder() {
         cardPanel.setLayout(cardLayout);
         this.viewManager = new ViewManager(cardPanel, cardLayout, viewManagerModel);
@@ -124,12 +137,24 @@ public class AppBuilder {
         }
     }
 
+    /**
+     * Creates and registers the sign-up view with the card layout.
+     *
+     * @return this builder for method chaining
+     */
+
     public AppBuilder addSignupView() {
         signupViewModel = new SignupViewModel();
         signupView = new SignupView(signupViewModel);
         cardPanel.add(signupView, signupView.getViewName());
         return this;
     }
+
+    /**
+     * Creates and registers the login view with the card layout.
+     *
+     * @return this builder for method chaining
+     */
 
     public AppBuilder addLoginView() {
         loginViewModel = new LoginViewModel();
@@ -138,12 +163,23 @@ public class AppBuilder {
         return this;
     }
 
+    /**
+     * Creates and registers the home (logged-in) view.
+     *
+     * @return this builder for method chaining
+     */
+
     public AppBuilder addHomeView() {
         homeViewModel = new HomeViewModel();
         homeView = new HomeView(homeViewModel, viewManagerModel);
         cardPanel.add(homeView, homeView.getViewName());
         return this;
     }
+    /**
+     * Creates and registers the historic trends view.
+     *
+     * @return this builder for method chaining
+     */
 
     public AppBuilder addTrendsView() {
         trendsViewModel = new TrendsViewModel();
@@ -151,6 +187,12 @@ public class AppBuilder {
         cardPanel.add(trendsView, trendsView.getViewName());
         return this;
     }
+    /**
+     * Creates and registers the main currency conversion view.
+     *
+     * @return this builder for method chaining
+     */
+
 
     public AppBuilder addConvertView() {
         convertViewModel = new ConvertViewModel();
@@ -162,12 +204,24 @@ public class AppBuilder {
         return this;
     }
 
+    /**
+     * Creates and registers the travel budget planner view.
+     *
+     * @return this builder for method chaining
+     */
+
     public AppBuilder addTravelBudgetView() {
         travelBudgetViewModel = new TravelBudgetViewModel();
         travelBudgetView = new TravelBudgetView(viewManagerModel, travelBudgetViewModel, convertViewModel);
         cardPanel.add(travelBudgetView, travelBudgetView.getViewName());
         return this;
     }
+    /**
+     * Wires the travel budget use case (interactor, presenter, controller)
+     * to the travel budget view and home view.
+     *
+     * @return this builder for method chaining
+     */
 
     public AppBuilder addTravelBudgetUseCase() {
         TravelBudgetOutputBoundary presenter =
@@ -186,6 +240,14 @@ public class AppBuilder {
 
         return this;
     }
+
+    /**
+     * Wires the offline-viewing use case to display cached pair rates and
+     * injects its controller and view model into the convert view so that
+     * the UI can reflect offline status.
+     *
+     * @return this builder for method chaining
+     */
 
     public AppBuilder addOfflineViewingUseCase() {
         // 1. ViewModel
@@ -212,6 +274,12 @@ public class AppBuilder {
 
         return this;
     }
+    /**
+     * Wires both the single-conversion use case and the multi-currency
+     * comparison use case into the home and convert views.
+     *
+     * @return this builder for method chaining
+     */
 
 
     public AppBuilder addConvertUseCase() {
@@ -237,6 +305,13 @@ public class AppBuilder {
         return this;
     }
 
+    /**
+     * Wires the sign-up use case, connecting the interactor and controller
+     * to the sign-up view and allowing new users to be created.
+     *
+     * @return this builder for method chaining
+     */
+
 
     public AppBuilder addSignupUseCase() {
         final SignupOutputBoundary signupOutputBoundary = new SignupPresenter(viewManagerModel,
@@ -248,6 +323,11 @@ public class AppBuilder {
         signupView.setSignupController(controller);
         return this;
     }
+    /**
+     * Wires the login use case to the login view.
+     *
+     * @return this builder for method chaining
+     */
 
     public AppBuilder addLoginUseCase() {
         final LoginOutputBoundary loginOutputBoundary = new LoginPresenter(viewManagerModel,
@@ -259,6 +339,14 @@ public class AppBuilder {
         loginView.setLoginController(loginController);
         return this;
     }
+    /**
+     * Wires the load-currencies use case and immediately triggers it once.
+     * <p>
+     * This ensures that the currency list is fetched (or read from cache)
+     * and available for the views on application start-up.
+     *
+     * @return this builder for method chaining
+     */
 
     public AppBuilder addLoadCurrenciesUseCase() {
 
@@ -286,6 +374,12 @@ public class AppBuilder {
 
         return this;
     }
+
+    /**
+     * Wires the change-password use case to the home view.
+     *
+     * @return this builder for method chaining
+     */
 
     public AppBuilder addChangePasswordUseCase() {
         final ChangePasswordOutputBoundary changePasswordOutputBoundary = new ChangePasswordPresenter(viewManagerModel,
@@ -315,6 +409,12 @@ public class AppBuilder {
         return this;
     }
 
+    /**
+     * Wires the historic trends use case to both the home and trends views.
+     *
+     * @return this builder for method chaining
+     */
+
     public AppBuilder addTrendsUseCase() {
         final TrendsOutputBoundary trendsPresenter = new TrendsPresenter(viewManagerModel, trendsViewModel);
         final TrendsInputBoundary trendsInteractor = new TrendsInteractor(dataAccess, currencyRepository, trendsPresenter);
@@ -323,6 +423,13 @@ public class AppBuilder {
         trendsView.setTrendsController(trendsController);// Should change later (back button)
         return this;
     }
+
+    /**
+     * Wires the Favourite Currency use case (Use Case 5) to the convert
+     * and trends views so that they can toggle favourite currencies.
+     *
+     * @return this builder for method chaining
+     */
 
 
     public AppBuilder addFavouriteCurrencyUseCase() {
@@ -359,6 +466,13 @@ public class AppBuilder {
 
         return this;
     }
+
+    /**
+     * Wires the Recent Currency use case (Use Case 8) to the convert
+     * and trends views so that they can display recently used currencies.
+     *
+     * @return this builder for method chaining
+     */
 
 
 
@@ -398,10 +512,12 @@ public class AppBuilder {
     }
 
 
-
-
-
-
+    /**
+     * Builds the Swing application frame, sets the initial view
+     * (the sign-up view), and returns the fully configured {@link JFrame}.
+     *
+     * @return the main application frame
+     */
     public JFrame build() {
         final JFrame application = new JFrame("Currency Converter");
         application.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);

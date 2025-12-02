@@ -5,7 +5,6 @@ import use_case.favourite_currency.FavouriteCurrencyInputData;
 
 /**
  * Controller for the Favourite Currency feature (Use Case 5).
- *
  * The view calls this controller when the user clicks a "favourite" button
  * (for example, a star icon) to add or remove a currency from favourites.
  */
