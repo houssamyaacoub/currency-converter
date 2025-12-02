@@ -2,7 +2,6 @@ package use_case.favourite_currency;
 
 /**
  * Output boundary for the Favourite Currency use case (Use Case 5).
- *
  * The interactor calls this interface to present a success or failure result
  * to the presenter, which then updates the ViewModel.
  */

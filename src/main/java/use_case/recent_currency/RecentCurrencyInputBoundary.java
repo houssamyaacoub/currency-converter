@@ -2,7 +2,6 @@ package use_case.recent_currency;
 
 /**
  * Input boundary for the Recent / Frequently Used Currencies use case (Use Case 8).
- *
  * The convert interactor (or a controller) calls this interface after a successful
  * conversion to record currency usage.
  */
