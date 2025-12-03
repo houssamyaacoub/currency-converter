@@ -1,6 +1,4 @@
-#intro Objectives, user guide, individual contribution (user story or task)
-
-# Currency Converter & Analytics Hub
+# Currency Converter & Analytics
 
 ![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=java&logoColor=white)
 
