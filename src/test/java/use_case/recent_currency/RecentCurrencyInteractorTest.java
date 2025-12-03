@@ -6,9 +6,17 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Arrays;
+import java.util.Map;
+import java.lang.reflect.Method;
+
+
+
+
 /**
  * Unit tests for {@link RecentCurrencyInteractor}.
- *
  * These tests verify that usage is recorded correctly, that the top
  * frequent currencies are computed, and that the final ordered list
  * is assembled as expected.
@@ -18,7 +26,6 @@ class RecentCurrencyInteractorTest {
     /**
      * Simple in-memory implementation of {@link RecentCurrencyDataAccessInterface}
      * used only for testing.
-     *
      * It stores usage counts, favourites, and the list of all supported
      * currencies in memory. It also keeps track of which currencies
      * were recorded via {@link #recordUsage(String, String)} so that
@@ -133,6 +140,62 @@ class RecentCurrencyInteractorTest {
             return result;
         }
     }
+
+    /**
+     * Test double for {@link RecentCurrencyDataAccessInterface} that deliberately
+     * returns null for all collection-returning methods. This allows us to hit
+     * the defensive null-handling branches inside the interactor.
+     */
+    private static class NullCollectionsGateway implements RecentCurrencyDataAccessInterface {
+
+        private String lastRecordedCurrency;
+
+        @Override
+        public boolean userExists(String userId) {
+            return true;
+        }
+
+        @Override
+        public void recordUsage(String userId, String currencyCode) {
+            // Remember the last recorded currency so that tests can verify
+            // that recordUsage(...) was actually called.
+            this.lastRecordedCurrency = currencyCode;
+        }
+
+        @Override
+        public Map<String, Integer> getUsageCounts(String userId) {
+            // Return null on purpose to trigger the defensive code path.
+            return null;
+        }
+
+        @Override
+        public List<String> getFavouriteCurrencies(String userId) {
+            // Return null on purpose to trigger the defensive code path.
+            return null;
+        }
+
+        @Override
+        public List<String> getAllSupportedCurrencies() {
+            // Return null on purpose to trigger the defensive code path.
+            return null;
+        }
+
+        @Override
+        public List<String> getOrderedCurrenciesForUser(String userId) {
+            // Not used in these specific tests; we can safely return an empty list.
+            return List.of();
+        }
+
+        /**
+         * Returns the last currency code that was passed to recordUsage(...).
+         *
+         * @return the last recorded currency code, or null if none was recorded.
+         */
+        String getLastRecordedCurrency() {
+            return lastRecordedCurrency;
+        }
+    }
+
 
     /**
      * Test that a successful call records usage and builds the correct ordered list.
@@ -375,6 +438,552 @@ class RecentCurrencyInteractorTest {
         assertTrue(gateway.getRecordedCurrencies().isEmpty(),
                 "No currencies should be recorded when both input codes are null.");
     }
+
+    /**
+     * RecentCurrencyOutputData: when the constructor receives null lists,
+     * it should replace them with empty lists instead of keeping null.
+     */
+    @Test
+    void outputDataUsesEmptyListsWhenArgumentsAreNull() {
+        RecentCurrencyOutputData data =
+                new RecentCurrencyOutputData("user1", null, null, null);
+
+        assertEquals("user1", data.getUserId());
+
+        assertNotNull(data.getFavouriteCurrencies());
+        assertTrue(data.getFavouriteCurrencies().isEmpty());
+
+        assertNotNull(data.getTopFrequentCurrencies());
+        assertTrue(data.getTopFrequentCurrencies().isEmpty());
+
+        assertNotNull(data.getOrderedCurrencyList());
+        assertTrue(data.getOrderedCurrencyList().isEmpty());
+    }
+
+    /**
+     * RecentCurrencyOutputData: getters should return defensive,
+     * unmodifiable copies of the internal lists.
+     */
+    @Test
+    void outputDataGettersReturnDefensiveUnmodifiableCopies() {
+        List<String> favourites = new ArrayList<>();
+        favourites.add("EUR");
+
+        List<String> top = new ArrayList<>();
+        top.add("CAD");
+
+        List<String> ordered = new ArrayList<>();
+        ordered.add("EUR");
+        ordered.add("CAD");
+
+        RecentCurrencyOutputData data =
+                new RecentCurrencyOutputData("user2", favourites, top, ordered);
+
+        // Change the original lists; this must NOT affect the data object.
+        favourites.add("USD");
+        top.add("USD");
+        ordered.clear();
+
+        assertEquals(List.of("EUR"), data.getFavouriteCurrencies());
+        assertEquals(List.of("CAD"), data.getTopFrequentCurrencies());
+        assertEquals(List.of("EUR", "CAD"), data.getOrderedCurrencyList());
+
+        // The returned lists should be unmodifiable.
+        assertThrows(UnsupportedOperationException.class,
+                () -> data.getFavouriteCurrencies().add("GBP"));
+    }
+
+    /**
+     * When the gateway returns null for usage counts, favourites and all supported
+     * currencies, the interactor should treat them as empty collections and still
+     * produce a successful result without throwing any exceptions.
+     * This test covers the branches where the interactor checks for null collections.
+     */
+    @Test
+    void executeHandlesNullCollectionsFromGatewayGracefully() {
+        String userId = "null-collections-user";
+        NullCollectionsGateway gateway = new NullCollectionsGateway();
+
+        RecentCurrencyOutputBoundary presenter = new RecentCurrencyOutputBoundary() {
+            @Override
+            public void prepareSuccessView(RecentCurrencyOutputData outputData) {
+                assertEquals(userId, outputData.getUserId());
+
+                // All lists should be non-null but empty.
+                assertNotNull(outputData.getFavouriteCurrencies());
+                assertTrue(outputData.getFavouriteCurrencies().isEmpty());
+
+                assertNotNull(outputData.getTopFrequentCurrencies());
+                assertTrue(outputData.getTopFrequentCurrencies().isEmpty());
+
+                assertNotNull(outputData.getOrderedCurrencyList());
+                assertTrue(outputData.getOrderedCurrencyList().isEmpty());
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                fail("Failure is not expected when gateway collections are null: " + errorMessage);
+            }
+        };
+
+        RecentCurrencyInputBoundary interactor =
+                new RecentCurrencyInteractor(gateway, presenter);
+
+        // Only "from" is a valid currency; "to" is null. This still represents
+        // a valid usage and should be recorded.
+        RecentCurrencyInputData input =
+                new RecentCurrencyInputData(userId, "CAD", null);
+
+        interactor.execute(input);
+
+        // Verify that recordUsage(...) was invoked at least once.
+        assertEquals("CAD", gateway.getLastRecordedCurrency());
+    }
+
+    /**
+     * When favourites and all supported currencies contain null or blank entries,
+     * the interactor should ignore those entries after normalisation and should
+     * not include them in the final ordered currency list.
+     * This test covers the branches where normalize(...) returns null and the
+     * "if (normalized != null)" checks inside the ordered list builder.
+     */
+    @Test
+    void executeIgnoresNullAndBlankEntriesFromGatewayLists() {
+        InMemoryRecentGateway gateway = new InMemoryRecentGateway();
+        String userId = "messy-user";
+
+        // Provide some initial usage so that the top frequent list is non-empty.
+        gateway.setUsage(userId, Map.of("USD", 2));
+
+        // Favourites contain only valid, non-null entries so that
+        // RecentCurrencyOutputData can safely copy them.
+        gateway.setFavourites(userId, List.of("EUR"));
+
+        // All supported currencies contain null and blank entries on purpose.
+        // These will be passed into buildOrderedList(...), where normalize(...)
+        // should return null for the invalid entries and they should be skipped.
+        gateway.setAllSupported(Arrays.asList("EUR", "USD", null, "   "));
+
+        RecentCurrencyOutputBoundary presenter = new RecentCurrencyOutputBoundary() {
+            @Override
+            public void prepareSuccessView(RecentCurrencyOutputData outputData) {
+                // Favourites should remain as configured in the gateway.
+                assertEquals(List.of("EUR"), outputData.getFavouriteCurrencies());
+
+                // Ordered list should contain only the valid, non-blank entries,
+                // with no duplicates.
+                List<String> ordered = outputData.getOrderedCurrencyList();
+                assertEquals(List.of("EUR", "USD"), ordered);
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                fail("Failure is not expected in this scenario: " + errorMessage);
+            }
+        };
+
+        RecentCurrencyInputBoundary interactor =
+                new RecentCurrencyInteractor(gateway, presenter);
+
+        // Only "from" is valid; "to" is null. This still should be recorded,
+        // but the focus of this test is on how the ordered list is built
+        // from favourites and all supported currencies.
+        RecentCurrencyInputData input =
+                new RecentCurrencyInputData(userId, "USD", null);
+
+        interactor.execute(input);
+    }
+
+    /**
+     * Extra branch coverage: tests normalize("") and single-sided recording of usage.
+     */
+    @Test
+    void branchCoverage_normalizeBlankAndSingleSideRecording() {
+        InMemoryRecentGateway gateway = new InMemoryRecentGateway();
+        String userId = "branch-user";
+
+        // Make user "exist"
+        gateway.setFavourites(userId, List.of("EUR"));
+        gateway.setAllSupported(List.of("EUR", "USD"));
+
+        RecentCurrencyOutputBoundary presenter = new RecentCurrencyOutputBoundary() {
+            @Override
+            public void prepareSuccessView(RecentCurrencyOutputData outputData) {
+                // We only assert the call does not fail; details not needed for branch coverage.
+                assertEquals(userId, outputData.getUserId());
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                fail("Unexpected failure: " + errorMessage);
+            }
+        };
+
+        RecentCurrencyInteractor interactor = new RecentCurrencyInteractor(gateway, presenter);
+
+        // Case 1: "from" is blank → normalize("") returns null
+        RecentCurrencyInputData input1 =
+                new RecentCurrencyInputData(userId, "   ", "USD");
+        interactor.execute(input1);
+        assertEquals(List.of("USD"), gateway.getRecordedCurrencies());
+
+        // Clear recorded usage to test other branch
+        gateway.getRecordedCurrencies().clear();
+
+        // Case 2: "to" is blank → normalize("") hits empty branch again
+        RecentCurrencyInputData input2 =
+                new RecentCurrencyInputData(userId, "USD", " ");
+        interactor.execute(input2);
+        assertEquals(List.of("USD"), gateway.getRecordedCurrencies());
+    }
+
+    /**
+     * Branch coverage test: covers the case where usageCounts is empty,
+     * and favourites/topFrequent/allSupported are empty lists (not null).
+     */
+    @Test
+    void branchCoverage_emptyCollectionsNotNull() {
+        InMemoryRecentGateway gateway = new InMemoryRecentGateway();
+        String userId = "branch-empty";
+
+        // Mark user as existing
+        gateway.setFavourites(userId, List.of());
+        gateway.setAllSupported(List.of());
+
+        // No usage set → usageCounts = empty map
+        // topFrequent = computeTopFrequent(empty map) → empty list
+
+        RecentCurrencyOutputBoundary presenter = new RecentCurrencyOutputBoundary() {
+            @Override
+            public void prepareSuccessView(RecentCurrencyOutputData outputData) {
+                // All lists should be empty (but NOT null)
+                assertNotNull(outputData.getFavouriteCurrencies());
+                assertTrue(outputData.getFavouriteCurrencies().isEmpty());
+
+                assertNotNull(outputData.getTopFrequentCurrencies());
+                assertTrue(outputData.getTopFrequentCurrencies().isEmpty());
+
+                assertNotNull(outputData.getOrderedCurrencyList());
+                assertTrue(outputData.getOrderedCurrencyList().isEmpty());
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                fail("Unexpected failure: " + errorMessage);
+            }
+        };
+
+        RecentCurrencyInteractor interactor =
+                new RecentCurrencyInteractor(gateway, presenter);
+
+        // Both currency codes blank → normalize returns null → no recording
+        RecentCurrencyInputData input =
+                new RecentCurrencyInputData(userId, " ", " ");
+
+        interactor.execute(input);
+    }
+
+    /**
+     * Forces normalize() inside favourites and topFrequent loops
+     * to hit all three branches: null, blank, and valid strings.
+     * This test only cares that valid entries appear in the final list.
+     */
+    @Test
+    void branchCoverage_normalizeInsideBuildOrderedList() {
+        InMemoryRecentGateway gateway = new InMemoryRecentGateway();
+        String userId = "normalize-branches";
+
+        // User exists
+        gateway.setUsage(userId, Map.of(
+                "cad", 3   // this will appear in topFrequent
+        ));
+
+        // favourites include:
+        // null  -> normalize(null)  -> null (branch A)
+        // " "   -> normalize(" ")   -> null (branch B)
+        // "eur" -> normalize("eur") -> "eur" (branch C)
+        gateway.setFavourites(userId, Arrays.asList(null, " ", "eur"));
+
+        // allSupported contains mixed case values; these will exercise
+        // normalize(...) in the allSupported loop as well.
+        gateway.setAllSupported(List.of("CAD", "USD", "EUR"));
+
+        RecentCurrencyOutputBoundary presenter = new RecentCurrencyOutputBoundary() {
+            @Override
+            public void prepareSuccessView(RecentCurrencyOutputData outputData) {
+                List<String> ordered = outputData.getOrderedCurrencyList();
+
+                // Basic sanity checks for branch coverage.
+                assertFalse(ordered.isEmpty());
+
+                // The valid values from favourites and topFrequent should appear.
+                assertTrue(ordered.contains("eur"));
+                assertTrue(ordered.contains("cad"));
+
+                // There should be at least one entry corresponding to "USD",
+                // regardless of case.
+                assertTrue(ordered.stream().anyMatch(code -> code.equalsIgnoreCase("usd")));
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                fail(errorMessage);
+            }
+        };
+
+        RecentCurrencyInteractor interactor =
+                new RecentCurrencyInteractor(gateway, presenter);
+
+        // Only provide blank currency codes (no usage recorded here);
+        // we are focusing on the ordering logic.
+        RecentCurrencyInputData input =
+                new RecentCurrencyInputData(userId, " ", " ");
+
+        interactor.execute(input);
+    }
+
+    /**
+     * Branch coverage helper: directly invokes the private buildOrderedList(...)
+     * method via reflection so we can cover the branches where:
+     *  - topFrequent is null (if(topFrequent != null) == false), and
+     *  - entries inside topFrequent normalise to null or non-null.
+     */
+    @Test
+    void branchCoverage_buildOrderedListTopFrequentBranches() throws Exception {
+        // Gateway / presenter are not used by buildOrderedList, but we need
+        // a concrete interactor instance to invoke the private method on.
+        InMemoryRecentGateway gateway = new InMemoryRecentGateway();
+
+        RecentCurrencyOutputBoundary presenter = new RecentCurrencyOutputBoundary() {
+            @Override
+            public void prepareSuccessView(RecentCurrencyOutputData outputData) {
+                // Not used in this test.
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                fail("buildOrderedList branch coverage test should not call presenter.");
+            }
+        };
+
+        RecentCurrencyInteractor interactor =
+                new RecentCurrencyInteractor(gateway, presenter);
+
+        // Obtain a handle to the private buildOrderedList(...) method.
+        Method buildMethod = RecentCurrencyInteractor.class.getDeclaredMethod(
+                "buildOrderedList", List.class, List.class, List.class);
+        buildMethod.setAccessible(true);
+
+        // ---- Case 1: topFrequent is null -> if (topFrequent != null) false branch ----
+        @SuppressWarnings("unchecked")
+        List<String> result1 = (List<String>) buildMethod.invoke(
+                interactor,
+                List.of("EUR"),   // favourites
+                null,             // topFrequent is null on purpose
+                List.of("CAD"));  // allSupported
+
+        // Favourites first, then remaining supported currencies.
+        assertEquals(List.of("EUR", "CAD"), result1);
+
+        // ---- Case 2: topFrequent contains null / blank / valid entries ----
+        List<String> messyTop = new ArrayList<>();
+        messyTop.add(null);   // normalize -> null
+        messyTop.add(" ");    // normalize -> null
+        messyTop.add("usd");  // normalize -> "usd"
+
+        @SuppressWarnings("unchecked")
+        List<String> result2 = (List<String>) buildMethod.invoke(
+                interactor,
+                List.of(),       // no favourites
+                messyTop,        // topFrequent with mixed entries
+                List.of());      // no allSupported
+
+        // After normalisation, only the valid non-null entry should remain.
+        assertEquals(List.of("usd"), result2);
+    }
+
+    /**
+     * When the user id itself is null, the interactor should treat this
+     * as "not logged in" and fail with the same error message.
+     */
+    @Test
+    void failure_userIdIsNull() {
+        InMemoryRecentGateway gateway = new InMemoryRecentGateway();
+
+        RecentCurrencyOutputBoundary presenter = new RecentCurrencyOutputBoundary() {
+            @Override
+            public void prepareSuccessView(RecentCurrencyOutputData outputData) {
+                fail("Success not expected when user id is null.");
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                assertEquals("User is not logged in.", errorMessage);
+            }
+        };
+
+        RecentCurrencyInputBoundary interactor =
+                new RecentCurrencyInteractor(gateway, presenter);
+
+        // userId is null on purpose to hit the "userId == null" branch.
+        RecentCurrencyInputData input =
+                new RecentCurrencyInputData(null, "CAD", "USD");
+
+        interactor.execute(input);
+    }
+
+    /**
+     * RecentCurrencyOutputData: if the orderedCurrencyList argument contains
+     * only null values, it should become an empty list after construction.
+     */
+    @Test
+    void outputDataTreatsAllNullOrderedListAsEmpty() {
+        List<String> favourites = List.of("CAD");
+        List<String> top = List.of("USD");
+
+        List<String> ordered = new ArrayList<>();
+        ordered.add(null);
+        ordered.add(null);
+
+        RecentCurrencyOutputData data =
+                new RecentCurrencyOutputData("user4", favourites, top, ordered);
+
+        // Favourites and top should be preserved.
+        assertEquals(List.of("CAD"), data.getFavouriteCurrencies());
+        assertEquals(List.of("USD"), data.getTopFrequentCurrencies());
+
+        // Ordered list had only nulls -> becomes empty after filtering.
+        assertTrue(data.getOrderedCurrencyList().isEmpty());
+    }
+
+
+
+
+    /**
+     * RecentCurrencyOutputData: a null userId should be converted
+     * to an empty string instead of being kept as null.
+     */
+    @Test
+    void outputDataTreatsNullUserIdAsEmptyString() {
+        RecentCurrencyOutputData data =
+                new RecentCurrencyOutputData(null,
+                        List.of("CAD"),
+                        List.of(),
+                        List.of());
+
+        assertEquals("", data.getUserId());
+        assertEquals(List.of("CAD"), data.getFavouriteCurrencies());
+    }
+
+
+    /**
+     * RecentCurrencyOutputData: lists that contain only null elements should
+     * be treated as empty lists after construction.
+     */
+    @Test
+    void outputDataTreatsAllNullElementsAsEmptyLists() {
+        // Use explicit lists instead of Arrays.asList(null) to avoid
+        // passing a null array into Arrays.asList, which would throw NPE.
+        List<String> favourites = new ArrayList<>();
+        favourites.add(null);
+        favourites.add(null);
+
+        List<String> top = new ArrayList<>();
+        top.add(null);
+
+        List<String> ordered = new ArrayList<>();
+        ordered.add(null);
+        ordered.add("CAD");
+        ordered.add(null);
+
+        RecentCurrencyOutputData data =
+                new RecentCurrencyOutputData("user3", favourites, top, ordered);
+
+        // Favourites and top frequent contain only nulls -> become empty lists.
+        assertTrue(data.getFavouriteCurrencies().isEmpty());
+        assertTrue(data.getTopFrequentCurrencies().isEmpty());
+
+        // Ordered contains one valid entry; nulls should be removed.
+        assertEquals(List.of("CAD"), data.getOrderedCurrencyList());
+    }
+
+
+    /**
+     * Branch coverage: ensures computeTopFrequent covers equal usage count path.
+     */
+    @Test
+    void branchCoverage_computeTopFrequent_equalValues() {
+        InMemoryRecentGateway gateway = new InMemoryRecentGateway();
+        String userId = "equal-usage";
+
+        // two equal usage values → triggers e2 == e1 case in comparator
+        gateway.setUsage(userId, Map.of(
+                "AAA", 5,
+                "BBB", 5
+        ));
+
+        gateway.setFavourites(userId, List.of());
+        gateway.setAllSupported(List.of("AAA","BBB"));
+
+        RecentCurrencyOutputBoundary presenter = new RecentCurrencyOutputBoundary() {
+            @Override
+            public void prepareSuccessView(RecentCurrencyOutputData outputData) {
+                // order doesn't matter as long as no crash
+                assertEquals(2, outputData.getTopFrequentCurrencies().size());
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                fail(errorMessage);
+            }
+        };
+
+        RecentCurrencyInteractor interactor =
+                new RecentCurrencyInteractor(gateway, presenter);
+
+        RecentCurrencyInputData input =
+                new RecentCurrencyInputData(userId, " ", " "); // no usage recorded
+
+        interactor.execute(input);
+    }
+
+    /**
+     * Branch coverage: ensures buildOrderedList covers empty topFrequent list.
+     */
+    @Test
+    void branchCoverage_emptyTopFrequentList() {
+        InMemoryRecentGateway gateway = new InMemoryRecentGateway();
+        String userId = "empty-top";
+
+        gateway.setUsage(userId, Map.of()); // ensures topFrequent = empty list
+        gateway.setFavourites(userId, List.of());
+        gateway.setAllSupported(List.of());
+
+        RecentCurrencyOutputBoundary presenter = new RecentCurrencyOutputBoundary() {
+            @Override
+            public void prepareSuccessView(RecentCurrencyOutputData outputData) {
+                assertTrue(outputData.getTopFrequentCurrencies().isEmpty());
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                fail(errorMessage);
+            }
+        };
+
+        RecentCurrencyInteractor interactor =
+                new RecentCurrencyInteractor(gateway, presenter);
+
+        interactor.execute(new RecentCurrencyInputData(userId, "", ""));
+    }
+
+
+
+
+
+
+
+
 
 
     /**
