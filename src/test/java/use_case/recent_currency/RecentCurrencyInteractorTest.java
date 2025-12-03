@@ -311,6 +311,73 @@ class RecentCurrencyInteractorTest {
     }
 
     /**
+     * When both the "from" and "to" currency codes are {@code null}, the interactor
+     * should treat this as "no valid currencies provided", not record any usage,
+     * and still succeed by computing an ordered list from favourites and the
+     * supported currencies when there are no existing usage counts.
+     */
+    @Test
+    void success_handlesNullCurrencyCodesAndEmptyUsage() {
+        // Arrange
+        InMemoryRecentGateway gateway = new InMemoryRecentGateway();
+        String userId = "user-null";
+
+        // Mark the user as existing by giving them at least one favourite currency.
+        // We deliberately do NOT set any usage counts so that the usage map for this
+        // user remains empty.
+        gateway.setFavourites(userId, List.of("EUR"));
+        gateway.setAllSupported(List.of("EUR", "CAD"));
+
+        // Presenter that will assert the expected values on a successful execution.
+        RecentCurrencyOutputBoundary presenter = new RecentCurrencyOutputBoundary() {
+            @Override
+            public void prepareSuccessView(RecentCurrencyOutputData outputData) {
+                // Basic sanity checks for the output data.
+                assertEquals(userId, outputData.getUserId(),
+                        "The user id in the output should match the input user id.");
+                assertEquals(List.of("EUR"), outputData.getFavouriteCurrencies(),
+                        "Favourites in the output should match the favourites in the gateway.");
+
+                // Because no usage has ever been recorded for this user, the list of
+                // top frequent currencies should be empty.
+                assertTrue(outputData.getTopFrequentCurrencies().isEmpty(),
+                        "Top frequent currencies should be empty when there is no usage.");
+
+                // The ordered list should still be computed. It should contain the
+                // favourites first, followed by the remaining supported currencies.
+                assertEquals(List.of("EUR", "CAD"), outputData.getOrderedCurrencyList(),
+                        "Ordered list should be favourites followed by remaining supported currencies.");
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                // This path should not be reached for this scenario.
+                fail("Failure is not expected when both currency codes are null: " + errorMessage);
+            }
+        };
+
+        // Create the interactor under test with the in-memory gateway and the presenter.
+        RecentCurrencyInputBoundary interactor =
+                new RecentCurrencyInteractor(gateway, presenter);
+
+        // Provide null for both the "from" and "to" currency codes.
+        // This forces the interactor to exercise the branch where normalize(...)
+        // receives a null value and returns null.
+        RecentCurrencyInputData input =
+                new RecentCurrencyInputData(userId, null, null);
+
+        // Act
+        interactor.execute(input);
+
+        // Assert: because both currency codes were null, no usage should have
+        // been recorded in the gateway. This also ensures the branch where the
+        // usage map is empty is covered.
+        assertTrue(gateway.getRecordedCurrencies().isEmpty(),
+                "No currencies should be recorded when both input codes are null.");
+    }
+
+
+    /**
      * Test that the list of top frequent currencies is limited to at most 5 entries.
      */
     @Test
