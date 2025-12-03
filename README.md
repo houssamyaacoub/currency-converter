@@ -1,9 +1,6 @@
-#intro Objectives, user guide, individual contribution (user story or task)
-
-# Currency Converter & Analytics Hub
+# Currency Converter & Analytics
 
 ![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=java&logoColor=white)
-
 
 > A robust financial analysis tool built for ease of use. Strictly adheres to Clean Architecture and SOLID principles.
 
