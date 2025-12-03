@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests for {@link FavouriteCurrencyInteractor}.
- *
  * These tests use an in-memory implementation of
  * {@link FavouriteCurrencyDataAccessInterface} so that we can test
  * the interactor logic without touching the file system or database.
@@ -18,7 +17,6 @@ class FavouriteCurrencyInteractorTest {
     /**
      * Simple in-memory implementation of {@link FavouriteCurrencyDataAccessInterface}
      * used only for testing.
-     *
      * It stores favourites in a {@link HashMap} from user id to a list of
      * favourite currency codes.
      */
@@ -71,6 +69,118 @@ class FavouriteCurrencyInteractorTest {
             favouritesByUser.put(userId, new ArrayList<>(favourites));
         }
     }
+
+    @Test
+    void outputData_handlesNullFavouriteList() {
+        FavouriteCurrencyOutputData out =
+                new FavouriteCurrencyOutputData("user1", null);
+
+        assertEquals("user1", out.getUserId());
+        assertEquals(List.of(), out.getFavouriteCurrencies());
+
+        // Unmodifiable check
+        assertThrows(UnsupportedOperationException.class,
+                () -> out.getFavouriteCurrencies().add("CAD"));
+    }
+
+
+    @Test
+    void addFavourite_whenMarkAsFavouriteIsFalse_stillAdds() {
+        InMemoryFavouriteGateway gateway = new InMemoryFavouriteGateway();
+        String userId = "userX";
+        gateway.setFavourites(userId, Collections.emptyList());
+
+        FavouriteCurrencyOutputBoundary presenter = new FavouriteCurrencyOutputBoundary() {
+            @Override
+            public void prepareSuccessView(FavouriteCurrencyOutputData outputData) {
+                assertEquals(List.of("JPY"), outputData.getFavouriteCurrencies());
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                fail("Should not fail");
+            }
+        };
+
+        FavouriteCurrencyInteractor interactor =
+                new FavouriteCurrencyInteractor(gateway, presenter);
+
+        FavouriteCurrencyInputData input =
+                new FavouriteCurrencyInputData(userId, "JPY", false); // ← 关键：false
+
+        interactor.execute(input);
+
+        assertEquals(List.of("JPY"), gateway.getFavouritesForUser(userId));
+    }
+
+    @Test
+    void failure_userIdIsNull() {
+        InMemoryFavouriteGateway gateway = new InMemoryFavouriteGateway();
+
+        FavouriteCurrencyOutputBoundary presenter = new FavouriteCurrencyOutputBoundary() {
+            @Override
+            public void prepareSuccessView(FavouriteCurrencyOutputData outputData) {
+                fail("Success not expected when user id is null.");
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                assertEquals("User is not logged in.", errorMessage);
+            }
+        };
+
+        FavouriteCurrencyInteractor interactor =
+                new FavouriteCurrencyInteractor(gateway, presenter);
+
+        FavouriteCurrencyInputData input =
+                new FavouriteCurrencyInputData(null, "CAD", true);
+
+        // Act
+        interactor.execute(input);
+    }
+
+    @Test
+    void failure_currencyCodeNull() {
+        InMemoryFavouriteGateway gateway = new InMemoryFavouriteGateway();
+        String userId = "alice";
+        // 让 user 存在，否则会先在 userExists 那里失败
+        gateway.setFavourites(userId, new ArrayList<>());
+
+        FavouriteCurrencyOutputBoundary presenter = new FavouriteCurrencyOutputBoundary() {
+            @Override
+            public void prepareSuccessView(FavouriteCurrencyOutputData outputData) {
+                fail("Success not expected when currency code is null.");
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                assertEquals("Currency code is empty.", errorMessage);
+            }
+        };
+
+        FavouriteCurrencyInteractor interactor =
+                new FavouriteCurrencyInteractor(gateway, presenter);
+
+        FavouriteCurrencyInputData input =
+                new FavouriteCurrencyInputData(userId, null, true);
+
+        // Act
+        interactor.execute(input);
+    }
+
+
+
+    @Test
+    void inputData_gettersWork() {
+        FavouriteCurrencyInputData input =
+                new FavouriteCurrencyInputData("abc", "CAD", false);
+
+        assertEquals("abc", input.getUserId());
+        assertEquals("CAD", input.getCurrencyCode());
+        assertFalse(input.isMarkAsFavourite());
+    }
+
+
 
     /**
      * Test that adding a new favourite currency for a valid user succeeds,
