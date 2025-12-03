@@ -5,8 +5,8 @@ import java.util.List;
 /**
  * Data that the presenter (and eventually the UI) needs in order
  * to show the comparison chart.
- * <p>
- * It stores:
+ *
+ * <p>It stores:
  * <ul>
  *     <li>The base currency name.</li>
  *     <li>The list of target currency names.</li>
@@ -40,6 +40,8 @@ public class CompareCurrenciesOutputData {
     }
 
     /**
+     * Returns the base currency name/code.
+     *
      * @return the base currency name/code
      */
     public String getBaseCurrencyName() {
@@ -47,6 +49,8 @@ public class CompareCurrenciesOutputData {
     }
 
     /**
+     * Returns the list of target currency names/codes.
+     *
      * @return the list of target currency names/codes
      */
     public List<String> getTargetCurrencyNames() {
@@ -54,7 +58,9 @@ public class CompareCurrenciesOutputData {
     }
 
     /**
-     * @return the list of exchange rates (target per 1 base)
+     * Returns the list of exchange rates (target per 1 base).
+     *
+     * @return the list of exchange rates
      */
     public List<Double> getRates() {
         return rates;
