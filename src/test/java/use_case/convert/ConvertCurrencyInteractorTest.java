@@ -158,6 +158,41 @@ class ConvertCurrencyInteractorTest {
         interactor.execute(inputData);
     }
 
+    @Test
+    void failureEmptyMessageTest() {
+        // Arrange
+        ConvertInputData inputData = new ConvertInputData(100.0, "USD", "EUR");
+        CurrencyRepository repo = new StubCurrencyRepository();
+
+        ExchangeRateDataAccessInterface dao = new ExchangeRateDataAccessInterface() {
+            @Override
+            public CurrencyConversion getLatestRate(Currency from, Currency to) {
+                // THIS IS THE KEY: A non-null, but EMPTY string
+                throw new RuntimeException("");
+            }
+            @Override
+            public List<CurrencyConversion> getHistoricalRates(Currency from, Currency to, LocalDate start, LocalDate end) { return null; }
+        };
+
+        ConvertOutputBoundary presenter = new ConvertOutputBoundary() {
+            @Override
+            public void present(ConvertOutputData outputData) {
+                fail("Use case success is unexpected.");
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                // Assert that the empty string triggered the default message logic
+                assertEquals("Conversion failed due to an unknown system error.", errorMessage);
+            }
+        };
+
+        ConvertCurrencyInteractor interactor = new ConvertCurrencyInteractor(dao, presenter, repo);
+
+        // Act
+        interactor.execute(inputData);
+    }
+
     // --- Test Helpers (Stubs) ---
 
     private static class StubCurrencyRepository implements CurrencyRepository {
