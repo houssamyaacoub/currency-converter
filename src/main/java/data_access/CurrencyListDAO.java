@@ -27,7 +27,7 @@ public class CurrencyListDAO implements CurrencyRepository {
 
     private static final String FILE_PATH = "symbols.txt";
     private static final String SYMBOLS_URL = "https://api.exchangeratesapi.io/v1/symbols";
-    private static final String API_KEY = "574aee8be3b66df24789719d4011563c";
+    private static final String API_KEY = "612b9a2f977e9348a53ce666b1901cd9";
 
     private final Map<String, Currency> currencyCache = new HashMap<>();
     private final HttpClient httpClient = HttpClient.newHttpClient();
