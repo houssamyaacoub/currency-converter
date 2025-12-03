@@ -2,19 +2,15 @@ package use_case.convert;
 
 import entity.CurrencyConversion;
 import entity.Currency;
-import java.time.Instant; // Assuming Instant is used in CurrencyConversion
 
 /**
  * The Interactor for the Convert Currency Use Case.
- * <p>
  * This class implements the core business logic for performing a single currency conversion.
  * It is responsible for:
- * <ul>
- * <li>Resolving currency names (e.g., "Turkish Lira") to {@link Currency} entities (codes).</li>
- * <li>Fetching the latest exchange rate from the Data Access Layer.</li>
- * <li>Applying the calculation rule (multiplication) defined in the {@link CurrencyConversion} entity.</li>
- * <li>Coordinating the result and passing it to the Presenter.</li>
- * </ul>
+ * - Resolving currency names (e.g., "Turkish Lira") to {@link Currency} entities (codes).</li>
+ * - Fetching the latest exchange rate from the Data Access Layer.</li>
+ * - Applying the calculation rule (multiplication) defined in the {@link CurrencyConversion} entity.</li>
+ * - Coordinating the result and passing it to the Presenter.</li>
  */
 public class ConvertCurrencyInteractor implements ConvertInputBoundary {
 

@@ -22,18 +22,37 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Data Access Object (DAO) for fetching exchange rates from the ExchangeRatesAPI.io service.
+ * This class implements the {@link ExchangeRateDataAccessInterface}, providing methods
+ * to retrieve both the latest and historical exchange rates.
+ * <strong>Features:</strong>
+ * <ul>
+ * <li>Fetches real-time rates via HTTP requests.</li>
+ * <li>Supports offline mode by caching successful conversions in a local {@link PairRateCache}.</li>
+ * <li>Automatically falls back to cached rates if no internet connection is detected.</li>
+ * </ul>
+ */
 public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
 
     private static final String BASE_URL = "https://api.exchangeratesapi.io/latest";
+    // NOTE: API Key should ideally be loaded from environment variables or a secure config file.
     private static final String API_KEY = "c3c0e3d86fae33b0c35114cfab615717";
 
     private final HttpClient httpClient;
+    // While this field is not strictly used in the methods below, it may be required
+    // for future logic involving currency validation or enrichment.
     private final CurrencyRepository currencyLookup;
 
-    // NEW: pair cache for offline conversions
+    // Local cache for storing rates to support offline functionality
     private final PairRateCache pairRateCache =
             new PairRateCache(PairRateCache.DEFAULT_FILENAME);
 
+    /**
+     * Constructs a new ExchangeRateHostDAO.
+     *
+     * @param currencyLookup The repository used for looking up currency details.
+     */
     public ExchangeRateHostDAO(CurrencyRepository currencyLookup) {
         this.httpClient = HttpClient.newHttpClient();
         this.currencyLookup = currencyLookup;
@@ -41,6 +60,11 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
 
     // ========== Connectivity helper ==========
 
+    /**
+     * Checks for an active internet connection by pinging a reliable server.
+     *
+     * @return {@code true} if the connection is successful, {@code false} otherwise.
+     */
     private boolean hasInternetConnection() {
         try {
             URL url = new URL("https://www.google.com");
@@ -57,9 +81,21 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
 
     // ========== Latest rate (used by Convert use case) ==========
 
+    /**
+     * Retrieves the latest exchange rate between two currencies.
+     * If an internet connection is available, it fetches the rate from the API
+     * and updates the local cache. If offline, it attempts to retrieve the rate
+     * from the cache.
+     *
+     * @param from The source currency.
+     * @param to   The target currency.
+     * @return A {@link CurrencyConversion} entity containing the rate and timestamp.
+     * @throws RuntimeException if the API request fails online, or if no cached rate exists offline.
+     */
     @Override
     public CurrencyConversion getLatestRate(Currency from, Currency to) {
 
+        // Using getCode() (via getSymbol()) assuming Symbol field stores the ISO code (e.g., "USD")
         String fromCode = from.getSymbol();
         String toCode = to.getSymbol();
 
@@ -84,16 +120,16 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
                             "API request failed with status code: " + response.statusCode());
                 }
 
-                // Parse JSON and build CurrencyConversion
+                // Parse JSON and build CurrencyConversion entity
                 CurrencyConversion conversion =
                         parseJsonResponse(response.body(), from, to);
 
-                // NEW: cache this pair for offline usage
+                // Update the offline cache with the fresh rate
                 pairRateCache.put(
                         fromCode,
                         toCode,
-                        conversion.getRate(),       // assuming getter exists
-                        conversion.getTimeStamp()   // assuming getter exists
+                        conversion.getRate(),
+                        conversion.getTimeStamp()
                 );
 
                 return conversion;
@@ -110,20 +146,28 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
         if (cachedRate != null) {
             Instant ts = pairRateCache.getTimestamp(fromCode, toCode);
             if (ts == null) {
-                ts = Instant.now(); // fallback if somehow missing
+                ts = Instant.now(); // Fallback timestamp if missing
             }
-            // Build a CurrencyConversion using cached data
+            // Build a CurrencyConversion entity using cached data
             return new CurrencyConversion(from, to, cachedRate, ts);
         }
 
-        // No cached rate for this pair → tell upper layers to show error
+        // Failure: No internet and no cached data for this pair
         throw new RuntimeException(
-                "Offline mode: no cached rate for " + fromCode + " -> " + toCode);
+                "Offline mode: no cached rate available for " + fromCode + " -> " + toCode);
     }
 
     // ========== Helper for JSON parsing ==========
 
-    //Helper method to getLatestRate()
+    /**
+     * Parses the JSON response from the API to construct a CurrencyConversion object.
+     * Calculates the cross-rate if the base currency returned by the API is not the requested source currency.
+     *
+     * @param json The raw JSON response string.
+     * @param from The source currency.
+     * @param to   The target currency.
+     * @return The constructed {@link CurrencyConversion} entity.
+     */
     private CurrencyConversion parseJsonResponse(String json, Currency from, Currency to) {
 
         if (json.contains("\"success\":false") || json.contains("\"error\"")) {
@@ -140,7 +184,7 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
             Instant timestamp = LocalDate.parse(dateString)
                     .atStartOfDay().toInstant(ZoneOffset.UTC);
 
-            // Extract Rates using the currency codes (as required by the API response structure)
+            // Extract the "rates" block to parse individual values
             String ratesBlock = json.substring(
                     json.indexOf("\"rates\":") + 8,
                     json.indexOf("}", json.indexOf("\"rates\":"))
@@ -150,9 +194,9 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
             double rateToTarget = extractRate(ratesBlock, to.getSymbol());
 
             // Calculate Cross-Rate: Rate (From -> To) = Rate_To / Rate_From
+            // This handles cases where the API returns rates relative to a fixed base (e.g., EUR)
             double finalRate = rateToTarget / rateFromBase;
 
-            // Instantiate and return the core CurrencyConversion Entity
             return new CurrencyConversion(from, to, finalRate, timestamp);
 
         } catch (Exception e) {
@@ -161,7 +205,13 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
         }
     }
 
-    // Helper method to parseJsonResponse()
+    /**
+     * Extracts a specific currency rate from the JSON "rates" block substring.
+     *
+     * @param ratesBlock   The substring containing the rates (e.g., "USD":1.12,"GBP":0.85).
+     * @param currencyCode The code of the currency to find.
+     * @return The rate as a double.
+     */
     private double extractRate(String ratesBlock, String currencyCode) {
 
         String codeKey = "\"" + currencyCode + "\":";
@@ -172,21 +222,35 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
                     "Currency code " + currencyCode + " not found in rates block.");
         }
 
+        // Move pointer to the start of the numeric value
         rateStart += codeKey.length();
 
+        // Find the end of the value (marked by a comma or closing brace)
         int rateEnd = ratesBlock.indexOf(",", rateStart);
         if (rateEnd == -1) {
             rateEnd = ratesBlock.indexOf("}", rateStart);
         }
         if (rateEnd == -1) {
+            // If neither is found, the number extends to the end of the string
             rateEnd = ratesBlock.length();
         }
 
         return Double.parseDouble(ratesBlock.substring(rateStart, rateEnd));
     }
 
-    // ========== Historical API (unchanged except using same HttpClient) ==========
+    // ========== Historical API ==========
 
+    /**
+     * Fetches historical exchange rates for a specific currency pair over a date range.
+     * To respect API limits and performance, this method samples rates at different intervals
+     * (daily, weekly, monthly) depending on the length of the requested range.
+     *
+     * @param from  The source currency.
+     * @param to    The target currency.
+     * @param start The start date (inclusive).
+     * @param end   The end date (inclusive).
+     * @return A list of {@link CurrencyConversion} entities representing the historical rates.
+     */
     @Override
     public List<CurrencyConversion> getHistoricalRates(
             Currency from, Currency to, LocalDate start, LocalDate end) {
@@ -196,13 +260,15 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
 
         long daysBetween = ChronoUnit.DAYS.between(start, end);
         int step;
-        if (daysBetween > 364) {        // year
+
+        // Determine sampling step to avoid excessive API calls
+        if (daysBetween > 364) {        // > 1 year: Sample every 2 weeks
             step = 14;
-        } else if (daysBetween > 179) { // 6 months
+        } else if (daysBetween > 179) { // > 6 months: Sample weekly
             step = 7;
-        } else if (daysBetween > 29) {  // 1 month
+        } else if (daysBetween > 29) {  // > 1 month: Sample every 5 days
             step = 5;
-        } else {                        // 1 week
+        } else {                        // <= 1 month: Daily
             step = 1;
         }
 
@@ -211,6 +277,8 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
         while (!current.isAfter(end)) {
             String dateString = current.format(formatter);
 
+            // Note: Historical endpoint structure varies by API plan;
+            // using the standard /v1/{date} format here.
             String url = String.format(
                     "https://api.exchangeratesapi.io/v1/%s?access_key=%s&symbols=%s,%s",
                     dateString, API_KEY, from.getSymbol(), to.getSymbol());
@@ -230,6 +298,7 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
                     resultList.add(conversion);
                 }
             } catch (Exception e) {
+                // Log and skip failed dates to return partial results rather than total failure
                 System.out.println("Skipped " + dateString + ": " + e.getMessage());
             }
 
