@@ -37,7 +37,8 @@ public class ExchangeRateHostDAO implements ExchangeRateDataAccessInterface {
 
     private static final String BASE_URL = "https://api.exchangeratesapi.io/latest";
     // NOTE: API Key should ideally be loaded from environment variables or a secure config file.
-    private static final String API_KEY = "c3c0e3d86fae33b0c35114cfab615717";
+    private static final String API_KEY = "612b9a2f977e9348a53ce666b1901cd9";
+    // Here are additional keys: 6affc4203655a7f3e60e89657815e615
 
     private final HttpClient httpClient;
     // While this field is not strictly used in the methods below, it may be required
