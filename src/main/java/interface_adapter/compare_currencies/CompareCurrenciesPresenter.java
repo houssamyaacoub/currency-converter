@@ -7,11 +7,11 @@ import use_case.compare_currencies.CompareCurrenciesOutputData;
 
 /**
  * Presenter for the Compare Currencies use case.
- * <p>
- * The presenter receives formatted output data from the interactor
+ *
+ * <p>The presenter receives formatted output data from the interactor
  * and updates the ViewModel, which triggers the UI refresh.
- * <p>
- * No UI components are touched directly — only the ViewModel changes.
+ *
+ * <p>No UI components are touched directly — only the ViewModel changes.
  */
 public class CompareCurrenciesPresenter implements CompareCurrenciesOutputBoundary {
 
@@ -35,7 +35,7 @@ public class CompareCurrenciesPresenter implements CompareCurrenciesOutputBounda
     @Override
     public void present(CompareCurrenciesOutputData data) {
         // Grab current state object from the ViewModel
-        ConvertState state = convertViewModel.getState();
+        final ConvertState state = convertViewModel.getState();
 
         // Make sure the ViewModel's base currency matches what the comparison used
         state.setFromCurrency(data.getBaseCurrencyName());
@@ -57,7 +57,7 @@ public class CompareCurrenciesPresenter implements CompareCurrenciesOutputBounda
     @Override
     public void prepareFailView(String errorMessage) {
         // Get current state
-        ConvertState state = convertViewModel.getState();
+        final ConvertState state = convertViewModel.getState();
 
         // Insert the error message
         state.setError(errorMessage);

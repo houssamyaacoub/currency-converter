@@ -11,9 +11,6 @@ import java.time.LocalDate;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import java.util.Iterator;
-
-
 
 /**
  * Tests for Use Case 6: CompareCurrenciesInteractor.
@@ -38,7 +35,7 @@ class CompareCurrenciesInteractorTest {
 
         @Override
         public Currency getByCode(String code) {
-            // not used in these tests
+            // Not needed in these tests.
             throw new UnsupportedOperationException("getByCode not needed in this test");
         }
 
@@ -56,13 +53,6 @@ class CompareCurrenciesInteractorTest {
             return c;
         }
 
-        /**
-         * Returns an iterator over all currencies stored in this stub.
-         * <p>
-         * This is only needed to satisfy the {@link CurrencyRepository}
-         * interface for the tests; the compare-currencies tests do not
-         * depend on the iteration order beyond containing the same elements.
-         */
         @Override
         public Iterator<Currency> getCurrencyIterator() {
             return byName.values().iterator();
@@ -87,9 +77,31 @@ class CompareCurrenciesInteractorTest {
         }
 
         @Override
-        public List<CurrencyConversion> getHistoricalRates(Currency from, Currency to,
-                                                           LocalDate start, LocalDate end) {
-            // not used in this use case
+        public List<CurrencyConversion> getHistoricalRates(Currency from,
+                                                           Currency to,
+                                                           LocalDate start,
+                                                           LocalDate end) {
+            // Not used in this use case.
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Stub DAO that always throws when getLatestRate is called,
+     * used to trigger the catch(Exception ex) path.
+     */
+    private static class ThrowingExchangeRateDAO implements ExchangeRateDataAccessInterface {
+
+        @Override
+        public CurrencyConversion getLatestRate(Currency from, Currency to) {
+            throw new RuntimeException("boom");
+        }
+
+        @Override
+        public List<CurrencyConversion> getHistoricalRates(Currency from,
+                                                           Currency to,
+                                                           LocalDate start,
+                                                           LocalDate end) {
             return Collections.emptyList();
         }
     }
@@ -103,7 +115,7 @@ class CompareCurrenciesInteractorTest {
         repo.addCurrency("Euro", "EUR");
         repo.addCurrency("Japanese Yen", "JPY");
 
-        // We control the rates that the DAO returns for each target name
+        // We control the rates that the DAO returns for each target name.
         Map<String, Double> rateMap = new HashMap<>();
         rateMap.put("US Dollar", 0.032); // example: 1 TRY = 0.032 USD
         rateMap.put("Euro", 0.029);
@@ -111,7 +123,7 @@ class CompareCurrenciesInteractorTest {
 
         StubExchangeRateDAO dao = new StubExchangeRateDAO(rateMap);
 
-        // Input: base + list of targets
+        // Input: base + list of targets.
         List<String> targets = Arrays.asList("US Dollar", "Euro", "Japanese Yen");
         CompareCurrenciesInputData inputData =
                 new CompareCurrenciesInputData("Turkish Lira", targets);
@@ -119,13 +131,13 @@ class CompareCurrenciesInteractorTest {
         CompareCurrenciesOutputBoundary presenter = new CompareCurrenciesOutputBoundary() {
             @Override
             public void present(CompareCurrenciesOutputData data) {
-                // We expect the base to be passed through unchanged
+                // We expect the base to be passed through unchanged.
                 assertEquals("Turkish Lira", data.getBaseCurrencyName());
 
-                // Targets should come back in the same order (minus any filtered ones)
+                // Targets should come back in the same order (minus any filtered ones).
                 assertEquals(targets, data.getTargetCurrencyNames());
 
-                // Check rates are what our stub DAO provided
+                // Check rates are what our stub DAO provided.
                 assertEquals(3, data.getRates().size());
                 assertEquals(0.032, data.getRates().get(0));
                 assertEquals(0.029, data.getRates().get(1));
@@ -146,7 +158,7 @@ class CompareCurrenciesInteractorTest {
     }
 
     @Test
-    void failureTest_noTargetsSelected() {
+    void failureTest_noTargetsSelected_emptyList() {
         StubCurrencyRepository repo = new StubCurrencyRepository();
         repo.addCurrency("Turkish Lira", "TRY");
 
@@ -174,10 +186,39 @@ class CompareCurrenciesInteractorTest {
     }
 
     @Test
+    void failureTest_noTargetsSelected_nullList() {
+        StubCurrencyRepository repo = new StubCurrencyRepository();
+        repo.addCurrency("Turkish Lira", "TRY");
+
+        StubExchangeRateDAO dao = new StubExchangeRateDAO(Collections.emptyMap());
+
+        // Pass null for targets to hit the (targets == null) branch.
+        CompareCurrenciesInputData inputData =
+                new CompareCurrenciesInputData("Turkish Lira", null);
+
+        CompareCurrenciesOutputBoundary presenter = new CompareCurrenciesOutputBoundary() {
+            @Override
+            public void present(CompareCurrenciesOutputData data) {
+                fail("present should not be called when targets are null.");
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                assertEquals("Please select at least one target currency.", errorMessage);
+            }
+        };
+
+        CompareCurrenciesInteractor interactor =
+                new CompareCurrenciesInteractor(dao, repo, presenter);
+
+        interactor.execute(inputData);
+    }
+
+    @Test
     void failureTest_tooManyTargets() {
         StubCurrencyRepository repo = new StubCurrencyRepository();
         repo.addCurrency("Turkish Lira", "TRY");
-        // just some dummy currencies – the interactor will fail before looking them up
+        // Just some dummy currencies – the interactor will fail before looking them up.
         repo.addCurrency("A", "A");
         repo.addCurrency("B", "B");
         repo.addCurrency("C", "C");
@@ -214,7 +255,7 @@ class CompareCurrenciesInteractorTest {
         StubCurrencyRepository repo = new StubCurrencyRepository();
         repo.addCurrency("Turkish Lira", "TRY");
 
-        // Even if DAO had data, interactor should filter everything out
+        // Even if DAO had data, interactor should filter everything out.
         StubExchangeRateDAO dao = new StubExchangeRateDAO(Collections.emptyMap());
 
         List<String> targets = Arrays.asList("Turkish Lira", "Turkish Lira");
@@ -238,4 +279,77 @@ class CompareCurrenciesInteractorTest {
 
         interactor.execute(inputData);
     }
+
+    @Test
+    void failureTest_exceptionFromDataAccessTriggersCatchBlock() {
+        StubCurrencyRepository repo = new StubCurrencyRepository();
+        repo.addCurrency("Turkish Lira", "TRY");
+        repo.addCurrency("US Dollar", "USD");
+
+        // DAO that always throws to hit the catch(Exception ex) block.
+        ThrowingExchangeRateDAO dao = new ThrowingExchangeRateDAO();
+
+        List<String> targets = Collections.singletonList("US Dollar");
+        CompareCurrenciesInputData inputData =
+                new CompareCurrenciesInputData("Turkish Lira", targets);
+
+        CompareCurrenciesOutputBoundary presenter = new CompareCurrenciesOutputBoundary() {
+            @Override
+            public void present(CompareCurrenciesOutputData data) {
+                fail("present should not be called when DAO throws an exception.");
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                assertTrue(errorMessage.startsWith("Error comparing currencies: "));
+                assertTrue(errorMessage.contains("boom"));
+            }
+        };
+
+        CompareCurrenciesInteractor interactor =
+                new CompareCurrenciesInteractor(dao, repo, presenter);
+
+        interactor.execute(inputData);
+    }
+
+    @Test
+    void failureTest_targetListContainsNullElement() {
+        StubCurrencyRepository repo = new StubCurrencyRepository();
+        repo.addCurrency("Turkish Lira", "TRY");
+        repo.addCurrency("US Dollar", "USD");
+
+        // DAO that returns a rate for the valid currency
+        Map<String, Double> rateMap = new HashMap<>();
+        rateMap.put("US Dollar", 0.032);
+        StubExchangeRateDAO dao = new StubExchangeRateDAO(rateMap);
+
+        // One null target, one valid target
+        List<String> targets = Arrays.asList(null, "US Dollar");
+        CompareCurrenciesInputData inputData =
+                new CompareCurrenciesInputData("Turkish Lira", targets);
+
+        CompareCurrenciesOutputBoundary presenter = new CompareCurrenciesOutputBoundary() {
+            @Override
+            public void present(CompareCurrenciesOutputData data) {
+                // Null element should be skipped, only USD should remain
+                assertEquals(Collections.singletonList("US Dollar"),
+                        data.getTargetCurrencyNames());
+                assertEquals(Collections.singletonList(0.032),
+                        data.getRates());
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                fail("present should be called, not failView.");
+            }
+        };
+
+        CompareCurrenciesInteractor interactor =
+                new CompareCurrenciesInteractor(dao, repo, presenter);
+
+        interactor.execute(inputData);
+    }
+
 }
+
+
