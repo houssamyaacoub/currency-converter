@@ -2,8 +2,8 @@ package use_case.compare_currencies;
 
 /**
  * Output boundary (interface) for the "compare multiple currencies" use case.
- * <p>
- * The interactor talks to this instead of directly updating the UI.
+ *
+ * <p>The interactor talks to this instead of directly updating the UI.
  */
 public interface CompareCurrenciesOutputBoundary {
 

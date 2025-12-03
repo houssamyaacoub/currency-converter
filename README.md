@@ -1,250 +1,148 @@
-#intro Objectives, user guide, individual contribution (user story or task)
+# Currency Converter & Analytics
 
-# Clean Architecture Team Lab Activity: Login and Logout
+![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=java&logoColor=white)
 
-In this team lab activity, your team will:
-- explore an existing use case (login)
-- add a new use case (logout).
+> A robust financial analysis tool built for ease of use. Strictly adheres to Clean Architecture and SOLID principles.
 
-To earn credit:
-- your team must demo your working `logout` use case.
-
-Your demo should be similar to the below example:
-
-![](images/sample-logout.gif)
 
 ---
 
-## Task 0: Fork this repo on GitHub
-**To get started, one team member should fork this repo on GitHub and share it with the team.
-All team members should then clone it.**
-
-
-**Suggested logistics:** One of you should invite the others to collaborate on their fork of the original repo on GitHub. You can do this in your repo on GitHub under `Settings -> Collaborators`. This will allow you to push branches to a common repo and then use pull requests to contribute your code and review. To prevent others from pushing directly to the main branch, we recommend that you set branch protection rules on GitHub. Below are how the settings might look if you add branch protection rules:
-
-![image of branch protection rules for main with a requirement of two approvers to merge in pull requests.](images/branch_protection_rules.png)
-
----
-
-## Task 1: Understanding the Program
-
-Open the project in IntelliJ. Open `app.Main` and read it as a team.
-- What are the currently implemented Views and Use Cases in the program?
-- Which Use Cases are triggered from each View?
-- Which version of the DAO is `app.Main` using?
-
-> Observe that the main method makes use of the `app.AppBuilder` class which
-is responsible for constructing our CA engine for each use case of the application. To answer the last two questions above, you will need to look inside the details of the `app.AppBuilder` class.
-
-**Make sure that each member of your team can successfully run `app/Main.java`.**
-- Ensure that you are each able to create a new user and log in using the username and password.
-
-> Note: you may need to set the Project SDK in the `Project Structure...` menu, and possibly
-> also manually link the Maven project if the app won't run when you try to run Main.
-
-### Task 1.1: Exploring the login use case
-
-Let's take a tour of the login use case code:
-
-- In IntelliJ, find the `LoginController` class and open it.
-
-- Set a breakpoint inside its `execute` method.
-
-- Run the program in debug mode.
-
-- On the login page, attempt to log in with an existing account. When you click the button, the breakpoint that you set will be triggered.
-
-- **Step through the code to trace the execution of the login use case.**
-  Importantly, pay extra close attention to what the Presenter does to ensure that the LoggedInView gets displayed after the user successfully gets logged into the application.
-
-> Pay attention to the classes involved and the flow of execution. When your team implements the logout use case next, your code will need to have a very similar structure.
-
-To better understand how the view gets updated, your team may find it useful to review the [Extra Advice about the Presenters, Views, and ViewModels](#extra-advice-about-the-presenters-views-and-viewmodels) section at the end of this README.
-
-## Task 2: Implementing the Logout Use Case
-
-Currently, you'll notice that the "Log Out" button in the `LoggedInView` still doesn't actually log you out of the program. Let's fix this.
-
-We have created all the classes for your team, but some of the code is missing. **As a team, your task is to fill in the missing code so that the logout use case is functional.**
-
-> The next part of the readme describes how your team will do this.
-
-Your team will know when you are done when:
-
-- Clicking the "Log Out" button takes the user back to the Login View when you use the program.
-- On the Login View, the username of the logged-out user is filled in.
-- The provided `LogoutInteractorTest` test passes.
-
-### Task 2.1: Dividing up the work
-
-There are `TODO` comments left in the files.
-
-> Recall that you can use the TODO tool window to conveniently pull up a complete list.
-
-Once all TODOs are complete, the "Log Out" button _should_ work!
-
-**As a team, split up the TODOs (see below) between the members of your team.**
-
-> Optionally, your team can make GitHub Issues and assign them to each team member.
-
-Make sure that each member has at least one TODO that they will be responsible for completing.
-If your team prefers to work in pairs, that is fine too.
-
-The TODOs are summarized below (by file) to help your team decide how to split them up:
+## 📖 Table of Contents
+1. [Team Info](#-team-info)
+2. [Introduction & Objectives](#-introduction--objectives)
+3. [Main Features](#-main-features)
+4. [Technology Stack](#-technology-stack)
+5. [User Guide](#-user-guide)
+6. [Visuals](#-visuals)
+7. [Slides](#-slides)
+8. [Future Plans](#-future-plans)
+9. [References](#-references)
 
 ---
 
-- `Main.java` (tip: look at how other use cases have been added)
-    -[ ] TODO: add the logout use case to the app
-  
----
+## 👥 Team Info
 
-- `LoggedInView.java` (tip: refer to the other views for similar code)
-    -[ ] TODO: save the logout controller in the instance variable.
-    -[ ] TODO: execute the logout use case through the Controller
-
----
-
-- `LogoutController.java` (tip: refer to the other controllers for similar code)
-    -[ ] TODO: Save the interactor in the instance variable.
-    -[ ] TODO: run the use case interactor for the logout use case
-
-> Note: there is no input data necessary for this use case.
+| Name                                   | GitHub Username                                      | Role / Contribution                                 |
+|:---------------------------------------|:-----------------------------------------------------|:----------------------------------------------------|
+| **John Sakalli (Group member 6)**      | [@jskl02](https://github.com/jskl02)                 | Use Case 1: Currency conversion                     |
+| **Houssam Yaacoub (Group member 2)**   | [@houssamyaacoub](https://github.com/houssamyaacoub) | Use case 2: Historical trends                       |
+| **Andy Yanxun Jiang (Group member 4)** | [@y4nxunj](https://github.com/y4nxunj)               | Use case 3: Compare strength of multiple currencies |
+| **Yao Dong Chen (Group member 5)**     | [@samuder1](https://github.com/samuder1)             | Use case 4: Favourite currencies                    |
+| **Junho Yoon (Group member 3)**        | [@6hoyoon](https://github.com/6hoyoon)               | Use case 5: Offline viewing using stored cache      |
+| **Alen Borangali (Group member 1)**    | [@alennchik](https://github.com/alennchik)           | Use case 6: Travel budget                           |
 
 ---
 
-- `LogoutInteractor.java` (tip: refer to `ChangePasswordInteractor.java` for similar code)
-    -[ ] TODO: save the DAO and Presenter in the instance variables.
-    -[ ] TODO: implement the logic of the Logout Use Case
+## 🎯 Introduction & Objectives
 
-> Note: there is no input data necessary for this use case.
+Dealing with foreign exchange can be confusing due to constant market volatility. **Currency Converter** is more than just a calculator; it is a decision-support tool designed to help users visualize trends and analyze market strength before converting their money.
 
----
-
-- `LogoutPresenter.java` (tip: refer to `SignupPresenter.java` for similar code)
-    -[ ] TODO: assign to the three instance variables.
-    -[ ] TODO: have prepareSuccessView update the LoggedInState
-    -[ ] TODO: have prepareSuccessView update the LoginState
-
----
-
-### Task 2.2: Complete your TODOs!
-With the work divided up, your team should complete the TODOs through a sequence of PRs.
-
-1. Make a branch for your work.
-
-> Make sure that you switch to your new branch!
-
-2. Complete your assigned TODO and make a pull request on GitHub. In your pull request,
-   briefly describe what your TODO was and how you implemented it. If you aren't sure
-   about part of it, include this in your pull request so that everyone knows what to look
-   for when reviewing — or you can of course discuss with your team before making your
-   pull request.
-
-3. Review all pull requests to ensure each TODO is correctly implemented.
-
-4. Once all TODOs are completed, your team should debug as needed to ensure the
-   correctness of the code. Setting a breakpoint where the logout use case
-   interactor starts its work will likely be a great place to start when debugging.
-
-And that's it; your team should now have a working logout use case!
-
-**Demo your working code to your TA to earn credit.**
+**Project Objectives:**
+* To provide an easy-to-use interface for easily and quickly converting currencies.
+* To solve the user problem of "blind conversions" by providing historical context as a clear graph (1 week to 1 year).
+* To favourite multiple currencies for quick access to conversions whenever you need it.
+* To visualize the strength of multiple currencies relative to one another.
+* To store recent currency conversions using data persistence (cache) to retrieve data even when you're offline.
+* To add a travel budget planning tool that converts multiple currencies to one base currency so you can keep track of the money you're going to spend.
+* To strictly implement **Clean Architecture**, ensuring the separation of business logic (Interactors) from the UI (Swing) and Data Access (APIs).
+* To demonstrate high code quality through 100% line coverage tests on core business logic and adherence to SOLID principles.
 
 ---
 
-# Extra Advice about the Presenters, Views, and ViewModels
+## 🚀 Main Features
 
-One of the trickiest parts of the code will be the flow of information between these pieces of the program. Below briefly explains how these pieces fit together and work in the context of the login use case.
+* **💱 Real-Time Conversion:** Instantly convert currencies using live market data.
+* **📈 Historical Trend Analysis:** Visualizes exchange rate performance over time (1 Week, 1 Month, 6 Months, 1 Year) using dynamic line charts.
+* **📊 Multi-Currency Comparison:** Compare a base currency against up to 5 target currencies simultaneously using bar charts to identify relative strength.
+* **⭐ Favorites System:** Save frequently used currencies for quick access in dropdown menus.
+* **🕒 Recent History:** Stores recent history to show you conversions even when offline.
+* **🛄 Travel Budgeting:** Convert multiple amounts from various currencies to another currency so that you can plan for a trip.
 
-## ViewModels and States
 
-In the design of this program, `ViewModel` is written using generics to allow
-for different "state" objects to be stored. For a `LoginViewModel`, the state is an instance of class `LoginState`. Each state object will just contain a basic constructor, getters, and setters to store the data of the view model.
-
-## A View and its ViewModel
-
-In the constructor of `LoginView`, the following line of code connects this instance of `LoginView` to its associated `LoginViewModel`:
-
-```java
-this.loginViewModel.addPropertyChangeListener(this);
-```
-
-This should remind you of the code we write when adding an action listener to a button. The code is following the same structure.
-
-> We'll talk more about this "pattern" of _events_ and _listeners_ in our next module.
-
-When the presenter updates the view model later, an event will be triggered — resulting in the view's `propertyChange` method getting called, with a `PropertyChangeEvent` object being passed through as the argument to the call.
-
-For example, the `LoginView.propertyChange` method looks like:
-
-```java
-public void propertyChange(PropertyChangeEvent evt) {
-        final LoginState state = (LoginState) evt.getNewValue();
-        setFields(state);
-        usernameErrorField.setText(state.getLoginError());
-    }
-```
-
-The `LoginView` gets the `LoginState` object stored in the `LoginViewModel` and updates itself with that information.
-
-## A Presenter and its ViewModel(s)
-
-A presenter may have one or more view models associated with it. For example, the login use case's presenter has a reference to a `LoginViewModel` and a `LoggedInViewModel`, since it will need to update both view models. Additionally, our implementation makes use of a `ViewManager` and `ViewManagerModel` to keep track of which view
-the user should currently see.
-
-Let's take a look at the `LoginPresenter.prepareSuccessView` method as an example:
-
-```java
-public void prepareSuccessView(LoginOutputData response) {
-    // On success, update the loggedInViewModel's state
-    final LoggedInState loggedInState = loggedInViewModel.getState();
-    loggedInState.setUsername(response.getUsername());
-    this.loggedInViewModel.firePropertyChanged();
-
-    // and clear everything from the LoginViewModel's state
-    this.loginViewModel.setState(new LoginState());
-    this.loginViewModel.firePropertyChanged();
-
-    // switch to the logged in view
-    this.viewManagerModel.setState(loggedInViewModel.getViewName());
-    this.viewManagerModel.firePropertyChanged();
-}
-```
-
-The first part of the code updates the view model for the logged-in view so that the newly logged-in username will be displayed. Once the state is updated, the `firePropertyChanged` method is called, which is what will trigger the call to the view's `propertyChange` method which will update the view based on the updated view model.
-
-This can be visualized as a sequence diagram as follows:
-
-> Note: this diagram has been simplified to focus on the high-level flow of information; the actual stack trace includes some additional intermediate calls which you can see if you step through the code in the debugger or manually click through the code.
-
-![sequence diagram of the LoginPresenter code](images/login_presenter_sequence_diagram.png)
-
-We then do the same, but for the login view model whose state we want to clear.
-
-Lastly, we update the state of the `viewManagerModel`, and alert the viewManager that it should switch to displaying the logged-in view.
-
-> Setting a breakpoint in the code and stepping through can help you see how the information flows through the system. Pay attention to the contents of the call stack to help you track where you are in the execution of the use case.
-
-## The ViewManager
-
-This class may stand out as a bit unclear about how it fits into our architecture, as it isn't in the CA Engine diagram at all. Remember that the CA Engine is representing a single use case in our program. Once our program has _multiple_ use cases, we naturally need some kind of additional code to connect them together. As we have seen, one use case can lead to a change in which view is presented to the user. To facilitate this, our implementation used a `ViewManager` and associated `ViewManagerModel` to take care of this switching for us. The state of a `ViewManagerModel` object is simply a string that indicates the name of the currently visible view (`JPanel` in this implementation). The `ViewManager` uses a `CardLayout` to conveniently display only the currently active view at a given time.
-
-When the `ViewManager` is alerted of a change to its associated `ViewManagerModel`, its `propertyChange` method is executed:
-
-```java
-public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName().equals("state")) {
-            final String viewModelName = (String) evt.getNewValue();
-            cardLayout.show(views, viewModelName);
-        }
-    }
-```
-
-This code will update the application to display the view corresponding to the `viewModelName` string.
-
-> In the `AppBuilder` code, you can see how the views are originally added to the `cardLayout`.
-
-> Thought Question: Can you think of any alternatives to our `ViewManager` implementation for managing multiple views?
 
 ---
+
+## 🛠 Technology Stack
+
+**Core:**
+* **Language:** Java 17+
+* **Architecture:** Clean Architecture (Entity, Use Case, Interface Adapter, Frameworks/Drivers layers).
+
+**Libraries & APIs:**
+* **GUI Framework:** Java Swing (javax.swing).
+* **Charting Library:** [JFreeChart](https://www.jfree.org/jfreechart/) (v1.5.3) - Used for Time Series and Bar Charts.
+* **Web API:** [ExchangeRatesAPI.io](https://exchangeratesapi.io/) - Provides live and historical currency data.
+* **Testing:** JUnit 5 to ensure 100% coverage and correctness of interactor logic
+
+---
+
+## 📖 User Guide
+
+### Prerequisites
+* Java Development Kit (JDK) 17 or higher.
+* IntelliJ IDEA (Recommended) or Eclipse.
+* Internet connection (for API calls).
+
+### Installation
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/houssamyaacoub/currency-converter/
+    ```
+2.  **Open in IntelliJ:**
+    * Select `File` -> `Open` -> Select the project folder.
+    * Right-click `pom.xml` -> `Add as Maven Project` to load dependencies (JFreeChart, etc.).
+3.  **API Key Configuration:**
+    * **[IMPORTANT: do this if the API request is failing (429 error)]**
+    * Navigate to `src/main/java/data_access/ExchangeRateHostDAO.java` and replace the string in `API_KEY` with your own key ([exchangeratesapi.io](https://exchangeratesapi.io/)), or use one of the commented out keys above the variable.
+    * Use the same key for the `API_KEY` in `src/main/java/data_access/CurrencyListDAO.java`.
+
+### How to Run
+1.  Navigate to `src/main/java/app/Main.java`.
+2.  Right-click and select **Run 'Main'**.
+3.  The Login screen will appear. Click "Sign Up" to create a new account, or log in if you have one.
+
+### How to Run Tests
+1.  Open the project in IntelliJ.
+2.  Right-click the `src/test/java` folder.
+3.  Select **Run 'All Tests'** (or **Run 'Tests in java'**) to verify the logic and coverage.
+
+---
+
+## 📸 Visuals
+
+|                  **Dashboard**                  |                    **Conversion Tool**                    |
+|:-----------------------------------------------:|:---------------------------------------------------------:|
+| Home View![home_view.png](images/home_view.png) | Convert View ![convert_view.png](images/convert_view.png) |
+|     *Dashboard to select the desired tool*      |            *Converts one currency to another*             |
+
+|                         **Travel Budget**                          |                     **Multiple Comparisons**                     |
+|:------------------------------------------------------------------:|:----------------------------------------------------------------:|
+|![travel_budget_view.png](images/travel_budget_view.png)|   ![multiple_comparisons.png](images/multiple_comparisons.png)   |
+| *Budget for your trip if you plan to travel to multiple locations* | *Compare the strength of multiple currencies to a base currency* |
+
+|            **Historical Chart**            |
+|:------------------------------------------:|
+| ![trends_view.png](images/trends_view.png) |
+|     *Historical trend of two currencies*      |
+---
+
+## 📑 Slides
+
+* **Presentation Slides:** [Link to Google Slides for more detailed overview](https://docs.google.com/presentation/d/1FgKiReBkfyqsdm5BSItoGI-Ow1cnmr0tFMOT05fml74/edit?usp=drive_link)
+
+---
+
+## 🚀 Future Plans
+
+* **📉 Offline Caching:** Implement a local database (SQLite) to cache historical graph data, allowing the app to show trends even without an internet connection.
+* **₿ Crypto Support:** Extend the currency list to support cryptocurrency symbols (BTC, ETH).
+* **📱 Web/Mobile Migration:** Since our Business Logic (Interactors) is pure Java and isolated from Swing, we plan to migrate the frontend to a Web Framework (Spring Boot + React) while reusing most of our backend code.
+* **🦾 Accessibility:** No app is complete without taking steps towards better accessibility. We plan to add options to increase font size, colour contrast, and even take user feedback for more features.
+
+---
+
+## 📚 References
+
+1. **Exchange Rate API:** [ExchangeRatesAPI.io Documentation](https://exchangeratesapi.io/documentation/)
+2. **JFreeChart:** [JFree.org](https://www.jfree.org/jfreechart/)
+3. **University of Toronto:** CSC207 course material for providing the user management login infrastructure.

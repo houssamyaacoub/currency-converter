@@ -14,6 +14,15 @@ public class TravelBudgetInputData {
     private final List<String> itemCurrencyNames;
     private final List<Double> amounts;
 
+    /**
+     * Constructs a new {@code TravelBudgetInputData}.
+     *
+     * @param homeCurrencyName  name of the currency used as the "home" or
+     *                          base currency for the final total
+     * @param itemCurrencyNames list of currency names for each expense item
+     * @param amounts           list of amounts for each expense item,
+     *                          in the matching currency from {@code itemCurrencyNames}
+     */
     public TravelBudgetInputData(String homeCurrencyName,
                                  List<String> itemCurrencyNames,
                                  List<Double> amounts) {
@@ -22,14 +31,24 @@ public class TravelBudgetInputData {
         this.amounts = amounts;
     }
 
+    /**
+     * @return the name of the home currency
+     */
     public String getHomeCurrencyName() {
         return homeCurrencyName;
     }
 
+
+    /**
+     * @return list of currency names for each expense item
+     */
     public List<String> getItemCurrencyNames() {
         return itemCurrencyNames;
     }
 
+    /**
+     * @return list of amounts for each expense item
+     */
     public List<Double> getAmounts() {
         return amounts;
     }

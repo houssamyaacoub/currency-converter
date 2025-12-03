@@ -1,17 +1,17 @@
 package use_case.compare_currencies;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import entity.Currency;
 import entity.CurrencyConversion;
 import use_case.convert.CurrencyRepository;
 import use_case.convert.ExchangeRateDataAccessInterface;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Core business logic for Use Case 6: compare multiple currencies.
- * <p>
- * This class:
+ *
+ * <p>This class:
  * <ul>
  *     <li>Validates the user's selected currencies.</li>
  *     <li>Looks up the Currency entities.</li>
@@ -20,6 +20,9 @@ import java.util.List;
  * </ul>
  */
 public class CompareCurrenciesInteractor implements CompareCurrenciesInputBoundary {
+
+    /** Maximum number of currencies that can be compared at once. */
+    private static final int MAX_TARGETS = 5;
 
     /** DAO for fetching latest exchange rates. */
     private final ExchangeRateDataAccessInterface dataAccess;
@@ -49,65 +52,67 @@ public class CompareCurrenciesInteractor implements CompareCurrenciesInputBounda
      * Main use-case method. Takes the input data, does validation and lookups,
      * then sends the result (or error message) to the presenter.
      *
-     * @param inputData base currency + list of target currencies
+     * @param inputData base currency and list of target currencies
      */
     @Override
     public void execute(CompareCurrenciesInputData inputData) {
         try {
             // Pull values out of the input object so they're easier to work with
-            String baseName = inputData.getBaseCurrencyName();
-            List<String> targets = inputData.getTargetCurrencyNames();
+            final String baseName = inputData.getBaseCurrencyName();
+            final List<String> targets = inputData.getTargetCurrencyNames();
+
+            boolean valid = true;
 
             // Basic sanity checks on the user's selection
             if (targets == null || targets.isEmpty()) {
                 presenter.prepareFailView("Please select at least one target currency.");
-                return;
+                valid = false;
+            } else if (targets.size() > MAX_TARGETS) {
+                presenter.prepareFailView(
+                        "You can compare at most " + MAX_TARGETS + " currencies.");
+                valid = false;
             }
 
-            if (targets.size() > 5) {
-                presenter.prepareFailView("You can compare at most 5 currencies.");
-                return;
-            }
+            if (valid) {
+                // Look up the base Currency entity by its name/code
+                final Currency baseCurrency = currencyRepository.getByName(baseName);
 
-            // Look up the base Currency entity by its name/code
-            Currency baseCurrency = currencyRepository.getByName(baseName);
+                // We'll only keep valid / non-duplicate targets in these lists
+                final List<String> cleanedTargets = new ArrayList<>();
+                final List<Double> rates = new ArrayList<>();
 
-            // We'll only keep valid / non-duplicate targets in these lists
-            List<String> cleanedTargets = new ArrayList<>();
-            List<Double> rates = new ArrayList<>();
+                for (String targetName : targets) {
+                    // Skip nulls and "same as base" to avoid silly or broken bars in the chart
+                    if (targetName == null || targetName.equals(baseName)) {
+                        continue;
+                    }
 
-            for (String targetName : targets) {
-                // Skip nulls and "same as base" to avoid silly or broken bars in the chart
-                if (targetName == null || targetName.equals(baseName)) {
-                    continue;
+                    // Look up the target currency entity
+                    final Currency targetCurrency = currencyRepository.getByName(targetName);
+
+                    // Ask the DAO for the latest rate: "how many units of target per 1 base"
+                    final CurrencyConversion conversion =
+                            dataAccess.getLatestRate(baseCurrency, targetCurrency);
+
+                    cleanedTargets.add(targetName);
+                    rates.add(conversion.getRate());
                 }
 
-                // Look up the target currency entity
-                Currency targetCurrency = currencyRepository.getByName(targetName);
+                // If everything got filtered out, there's nothing useful to show to the user
+                if (cleanedTargets.isEmpty()) {
+                    presenter.prepareFailView("No valid target currencies selected.");
+                } else {
+                    // Wrap up the formatted data for the presenter (and then the UI)
+                    final CompareCurrenciesOutputData outputData =
+                            new CompareCurrenciesOutputData(baseName, cleanedTargets, rates);
 
-                // Ask the DAO for the latest rate: "how many units of target per 1 base"
-                CurrencyConversion conversion =
-                        dataAccess.getLatestRate(baseCurrency, targetCurrency);
-
-                cleanedTargets.add(targetName);
-                rates.add(conversion.getRate());
+                    presenter.present(outputData);
+                }
             }
-
-            // If everything got filtered out, there's nothing useful to show to the user
-            if (cleanedTargets.isEmpty()) {
-                presenter.prepareFailView("No valid target currencies selected.");
-                return;
-            }
-
-            // Wrap up the formatted data for the presenter (and then the UI)
-            CompareCurrenciesOutputData outputData =
-                    new CompareCurrenciesOutputData(baseName, cleanedTargets, rates);
-
-            presenter.present(outputData);
-
-        } catch (Exception e) {
+        }
+        catch (Exception ex) {
             // Catch any unexpected errors and bubble up a friendly message
-            presenter.prepareFailView("Error comparing currencies: " + e.getMessage());
+            presenter.prepareFailView("Error comparing currencies: " + ex.getMessage());
         }
     }
 }
