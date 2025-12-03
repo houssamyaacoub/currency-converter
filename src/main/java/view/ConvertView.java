@@ -8,7 +8,6 @@ import interface_adapter.favourite_currency.FavouriteCurrencyController;
 import interface_adapter.favourite_currency.FavouriteCurrencyViewModel;
 import interface_adapter.recent_currency.RecentCurrencyController;
 import interface_adapter.recent_currency.RecentCurrencyViewModel;
-import use_case.recent_currency.RecentCurrencyDataAccessInterface;
 import interface_adapter.logged_in.HomeViewModel;
 import interface_adapter.compare_currencies.CompareCurrenciesController;
 
@@ -81,7 +80,6 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     // View Models & DAO
     private RecentCurrencyViewModel recentCurrencyViewModel;
     private FavouriteCurrencyViewModel favouriteCurrencyViewModel;
-    private RecentCurrencyDataAccessInterface recentDAO;
 
     // --- UI Components ---
     private final JComboBox<String> fromBox;
@@ -311,15 +309,37 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         this.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentShown(ComponentEvent e) {
+
+                if (recentCurrencyController != null
+                        && homeViewModel != null
+                        && homeViewModel.getState() != null) {
+
+                    String userId = homeViewModel.getState().getUsername();
+                    if (userId != null && !userId.isEmpty()) {
+
+                        recentCurrencyController.execute(userId, null, null);
+                    }
+                }
+
                 updateCurrencyDropdown();
 
                 if (offlineViewController != null) {
                     offlineViewController.loadOfflineRates();
                 }
-
             }
         });
+
     }
+    /**
+     * Handles the main "Convert" button click.
+     * Responsibilities:
+     * <ul>
+     *     <li>Read amount / from / to from the UI.</li>
+     *     <li>Update the {@link ConvertViewModel} state.</li>
+     *     <li>Call the {@link ConvertController} to perform the conversion.</li>
+     *     <li>Notify the RecentCurrency use case to record usage.</li>
+     * </ul>
+     */
 
     private void handleConvertAction() {
         String amountText = amountField.getText();
@@ -342,6 +362,7 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         viewModel.setState(currentState);
 
         if (convertController != null) {
+            // Trigger single conversion
             convertController.execute(amountText, from, to);
 
             // Log to Recent History
@@ -354,14 +375,38 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         }
     }
 
+    /**
+     * Handles clicking the "★" button for either FROM or TO currency.
+     * This toggles the favourite status via the Favourite use case and
+     * then refreshes the RecentCurrency ordering (so dropdown reflects
+     * combined favourites + recent usage).
+     *
+     * @param selected the currently selected currency in the combo box.
+     */
+
     private void handleFavouriteAction(Object selected) {
-        if (favouriteCurrencyController == null || homeViewModel == null || homeViewModel.getState() == null) return;
+        if (homeViewModel == null || homeViewModel.getState() == null) return;
 
         String userId = homeViewModel.getState().getUsername();
         if (userId == null || userId.isEmpty() || selected == null) return;
 
-        favouriteCurrencyController.execute(userId, selected.toString(), true);
+        // Toggle favourite for this currency
+        if (favouriteCurrencyController != null) {
+            favouriteCurrencyController.execute(userId, selected.toString(), true);
+        }
+        // Refresh ordered list (favourites + recent)
+        if (recentCurrencyController != null) {
+            recentCurrencyController.execute(userId, null, null);
+        }
     }
+
+    /**
+     * Handles the "Compare Multiple" button click.
+     * Opens a dialog where the user can select up to 5 target currencies
+     * and delegates the multi-compare logic to the
+     * {@link CompareCurrenciesController}.
+     */
+
 
     private void handleMultiCompareAction() {
         if (compareCurrenciesController == null) {
@@ -373,6 +418,12 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
         openMultiCompareDialog(fromSelected.toString());
     }
+
+    /**
+     * Handles toggling of the auto-refresh checkbox.
+     * When enabled, it periodically triggers the Convert button every hour
+     * using a Swing {@link javax.swing.Timer}.
+     */
 
     private void handleAutoRefresh() {
         if (autoRefreshCheckBox.isSelected()) {
@@ -388,6 +439,13 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     }
 
     // --- Helper UI Methods ---
+
+    /**
+     * Opens a dialog that lets the user select up to 5 target currencies
+     * to compare against the given base currency.
+     *
+     * @param baseCurrency the currency selected in the FROM combo box
+     */
 
     private void openMultiCompareDialog(String baseCurrency) {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
@@ -423,6 +481,15 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
             compareCurrenciesController.execute(baseCurrency, selected);
         }
     }
+
+    /**
+     * Renders a bar chart comparing the given target currencies against
+     * a base currency using JFreeChart.
+     *
+     * @param baseCurrency the base currency code
+     * @param targets      list of target currency codes
+     * @param rates        corresponding conversion rates
+     */
 
     private void showComparisonChart(String baseCurrency, List<String> targets, List<Double> rates) {
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
@@ -468,6 +535,11 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         dialog.setVisible(true);
     }
 
+    /**
+     * Restores the combo boxes and amount field from the current
+     * {@link ConvertViewModel} state when the view is created.
+     */
+
     private void restoreState() {
         ConvertState initialState = viewModel.getState();
         if (initialState.getFromCurrency() != null) fromBox.setSelectedItem(initialState.getFromCurrency());
@@ -476,6 +548,12 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
     }
 
     // --- PropertyChangeListener ---
+
+    /**
+     * Reacts to changes in the {@link ConvertViewModel} (online conversion)
+     * and {@link OfflineViewModel} (offline cache status), updating labels,
+     * timestamps and triggering comparison charts when appropriate.
+     */
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         Object source = evt.getSource();
@@ -550,16 +628,72 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
 
 
     // --- Dependency Setters ---
+    /**
+     * Injects the controller used for single-pair currency conversion.
+     *
+     * @param c the convert controller to use
+     */
     public void setConvertController(ConvertController c) { this.convertController = c; }
+    /**
+     * Injects the controller used to toggle favourite currencies.
+     *
+     * @param c the favourite currency controller to use
+     */
     public void setFavouriteCurrencyController(FavouriteCurrencyController c) { this.favouriteCurrencyController = c; }
+    /**
+     * Injects the controller used to record recent / frequently used currencies.
+     *
+     * @param c the recent currency controller to use
+     */
     public void setRecentCurrencyController(RecentCurrencyController c) { this.recentCurrencyController = c; }
+    /**
+     * Injects the controller used for the multi-currency comparison feature.
+     *
+     * @param c the compare currencies controller to use
+     */
     public void setCompareCurrenciesController(CompareCurrenciesController c) { this.compareCurrenciesController = c; }
+    /**
+     * Injects the view model for the Recent Currency use case.
+     * <p>
+     * This method also registers a listener so that the dropdowns are rebuilt
+     * whenever the ordered currency list changes.
+     *
+     * @param vm the recent currency view model
+     */
 
-    public void setRecentCurrencyDAO(RecentCurrencyDataAccessInterface dao) { this.recentDAO = dao; updateCurrencyDropdown(); }
-    public void setRecentCurrencyViewModel(RecentCurrencyViewModel vm) { this.recentCurrencyViewModel = vm; vm.addPropertyChangeListener(e -> updateCurrencyDropdown()); }
-    public void setFavouriteCurrencyViewModel(FavouriteCurrencyViewModel vm) { this.favouriteCurrencyViewModel = vm; vm.addPropertyChangeListener(e -> updateCurrencyDropdown()); }
+    public void setRecentCurrencyViewModel(RecentCurrencyViewModel vm) {
+        this.recentCurrencyViewModel = vm;
+        if (vm != null) {
+            vm.addPropertyChangeListener(e -> updateCurrencyDropdown());
+        }
+    }
+    /**
+     * Injects the view model for the Favourite Currency use case.
+     * <p>
+     * This method also registers a listener so that the dropdowns are rebuilt
+     * whenever the favourite list changes.
+     *
+     * @param vm the favourite currency view model
+     */
+
+    public void setFavouriteCurrencyViewModel(FavouriteCurrencyViewModel vm) {
+        this.favouriteCurrencyViewModel = vm;
+        if (vm != null) {
+            vm.addPropertyChangeListener(e -> updateCurrencyDropdown());
+        }
+    }
+
 
     // --- Offline Viewing dependency setters ---
+
+    /**
+     * Injects the view model for the Offline Viewing use case.
+     * <p>
+     * A property-change listener is registered so that offline status and
+     * timestamps can be reflected in this view.
+     *
+     * @param vm the offline viewing view model
+     */
     public void setOfflineViewModel(OfflineViewModel vm) {
         this.offlineViewModel = vm;
         if (vm != null) {
@@ -567,25 +701,45 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
         }
     }
 
+    /**
+     * Injects the controller responsible for loading offline cached rates.
+     *
+     * @param controller the offline viewing controller
+     */
     public void setOfflineViewController(OfflineViewController controller) {
         this.offlineViewController = controller;
     }
 
+    /**
+     * Rebuilds the FROM / TO combo boxes based on the ordered list coming
+     * from the RecentCurrencyViewModel. If that list is empty, falls back
+     * to the static {@code baseCurrencies} list.
+     * The previous selections are preserved if possible.
+     */
     private void updateCurrencyDropdown() {
         java.util.List<String> ordered = null;
 
-        // Save current selections so we can restore them later
         Object currentFrom = fromBox.getSelectedItem();
         Object currentTo = toBox.getSelectedItem();
 
-        // 1. get recent/frequent ordering from DAO
-        if (recentDAO != null && homeViewModel != null && homeViewModel.getState() != null) {
-            String userId = homeViewModel.getState().getUsername();
-            if (userId != null && !userId.isEmpty()) ordered = recentDAO.getOrderedCurrenciesForUser(userId);
-        }
-        if ((ordered == null || ordered.isEmpty()) && baseCurrencies != null) ordered = baseCurrencies;
+        if (recentCurrencyViewModel != null
+                && recentCurrencyViewModel.getState() != null) {
 
-        if (ordered == null) return;
+            java.util.List<String> fromVm =
+                    recentCurrencyViewModel.getState().getOrderedCurrencyList();
+
+            if (fromVm != null && !fromVm.isEmpty()) {
+                ordered = fromVm;
+            }
+        }
+
+        if ((ordered == null || ordered.isEmpty()) && baseCurrencies != null) {
+            ordered = baseCurrencies;
+        }
+
+        if (ordered == null || ordered.isEmpty()) {
+            return;
+        }
 
         fromBox.removeAllItems();
         toBox.removeAllItems();
@@ -594,9 +748,14 @@ public class ConvertView extends JPanel implements ActionListener, PropertyChang
             toBox.addItem(code);
         }
 
-        if (currentFrom != null) fromBox.setSelectedItem(currentFrom);
-        if (currentTo != null) toBox.setSelectedItem(currentTo);
+        if (currentFrom != null) {
+            fromBox.setSelectedItem(currentFrom);
+        }
+        if (currentTo != null) {
+            toBox.setSelectedItem(currentTo);
+        }
     }
+
 
     // --- Helper UI Generators ---
     private void addLabel(JPanel panel, String text, int x, int y, GridBagConstraints gbc) {

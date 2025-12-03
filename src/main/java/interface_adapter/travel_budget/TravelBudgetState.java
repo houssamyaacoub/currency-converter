@@ -3,6 +3,19 @@ package interface_adapter.travel_budget;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * State object for the Travel Budget screen.
+ *
+ * <p>This class holds all UI-relevant values such as:
+ * <ul>
+ *   <li>The selected home currency</li>
+ *   <li>The formatted total</li>
+ *   <li>The formatted breakdown list</li>
+ *   <li>Any error message</li>
+ * </ul></p>
+ *
+ * <p>It is updated by the presenter and observed by the view.</p>
+ */
 public class TravelBudgetState {
 
     private String homeCurrency;

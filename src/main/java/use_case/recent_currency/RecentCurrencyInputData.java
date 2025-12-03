@@ -2,7 +2,6 @@ package use_case.recent_currency;
 
 /**
  * Input data for the Recent / Frequently Used Currencies use case (Use Case 8).
- *
  * This object is typically created by the convert interactor or controller
  * after a successful conversion.
  */
@@ -27,13 +26,31 @@ public class RecentCurrencyInputData {
         this.toCurrencyCode = toCurrencyCode;
     }
 
+    /**
+     * Returns the identifier of the user whose usage is being recorded.
+     *
+     * @return the user id
+     */
+
     public String getUserId() {
         return userId;
     }
 
+    /**
+     * Returns the source currency code of the conversion.
+     *
+     * @return the "from" currency code (for example, {@code "CAD"})
+     */
+
     public String getFromCurrencyCode() {
         return fromCurrencyCode;
     }
+
+    /**
+     * Returns the target currency code of the conversion.
+     *
+     * @return the "to" currency code (for example, {@code "USD"})
+     */
 
     public String getToCurrencyCode() {
         return toCurrencyCode;

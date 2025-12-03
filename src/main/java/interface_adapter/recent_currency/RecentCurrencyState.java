@@ -5,7 +5,6 @@ import java.util.List;
 
 /**
  * State object for the Recent / Frequently Used Currencies feature (Use Case 8).
- *
  * This holds everything the view needs to display:
  *  - favourite currencies,
  *  - top frequent currencies,
@@ -39,9 +38,12 @@ public class RecentCurrencyState {
      */
 
     public void setFavouriteCurrencies(List<String> favouriteCurrencies) {
-        this.favouriteCurrencies = favouriteCurrencies == null
-                ? new ArrayList<>()
-                : new ArrayList<>(favouriteCurrencies);
+        if (favouriteCurrencies == null) {
+            this.favouriteCurrencies = new ArrayList<>();
+        }
+        else {
+            this.favouriteCurrencies = new ArrayList<>(favouriteCurrencies);
+        }
     }
 
     /**
@@ -63,9 +65,12 @@ public class RecentCurrencyState {
      */
 
     public void setTopFrequentCurrencies(List<String> topFrequentCurrencies) {
-        this.topFrequentCurrencies = topFrequentCurrencies == null
-                ? new ArrayList<>()
-                : new ArrayList<>(topFrequentCurrencies);
+        if (topFrequentCurrencies == null) {
+            this.topFrequentCurrencies = new ArrayList<>();
+        }
+        else {
+            this.topFrequentCurrencies = new ArrayList<>(topFrequentCurrencies);
+        }
     }
 
     /**
@@ -87,9 +92,12 @@ public class RecentCurrencyState {
      */
 
     public void setOrderedCurrencyList(List<String> orderedCurrencyList) {
-        this.orderedCurrencyList = orderedCurrencyList == null
-                ? new ArrayList<>()
-                : new ArrayList<>(orderedCurrencyList);
+        if (orderedCurrencyList == null) {
+            this.orderedCurrencyList = new ArrayList<>();
+        }
+        else {
+            this.orderedCurrencyList = new ArrayList<>(orderedCurrencyList);
+        }
     }
     /**
      * Returns the current error message, if any.
@@ -109,6 +117,11 @@ public class RecentCurrencyState {
      */
 
     public void setErrorMessage(String errorMessage) {
-        this.errorMessage = errorMessage == null ? "" : errorMessage;
+        if (errorMessage == null) {
+            this.errorMessage = "";
+        }
+        else {
+            this.errorMessage = errorMessage;
+        }
     }
 }

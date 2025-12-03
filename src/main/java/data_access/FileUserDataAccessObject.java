@@ -164,33 +164,67 @@ public class FileUserDataAccessObject implements SignupUserDataAccessInterface,
             throw new RuntimeException(ex);
         }
     }
-
+    /**
+     * Persists a user to the in-memory map and writes all data to disk.
+     * If a user with the same username already exists, it will be replaced.
+     *
+     * @param user the user to save
+     */
 
     @Override
     public void save(User user) {
         accounts.put(user.getName(), user);
         this.save();
     }
+    /**
+     * Retrieves the {@link User} object with the given username.
+     *
+     * @param username the username to look up
+     * @return the corresponding {@link User}, or {@code null} if not found
+     */
 
     @Override
     public User get(String username) {
         return accounts.get(username);
     }
+    /**
+     * Sets the "current" logged-in username.
+     * This is used by higher-level use cases to identify the active user.
+     *
+     * @param name the username of the currently logged-in user
+     */
 
     @Override
     public void setCurrentUsername(String name) {
         currentUsername = name;
     }
+    /**
+     * Returns the username of the currently logged-in user, if any.
+     *
+     * @return the current username, or {@code null} if none is set
+     */
 
     @Override
     public String getCurrentUsername() {
         return currentUsername;
     }
+    /**
+     * Returns whether a user with the given username exists.
+     *
+     * @param identifier the username to check
+     * @return {@code true} if this username exists; {@code false} otherwise
+     */
 
     @Override
     public boolean existsByName(String identifier) {
         return accounts.containsKey(identifier);
     }
+    /**
+     * Updates the stored password (and possibly other fields) for a user
+     * and persists the change to disk.
+     *
+     * @param user the user object with the updated password
+     */
 
     @Override
     public void changePassword(User user) {
@@ -198,11 +232,25 @@ public class FileUserDataAccessObject implements SignupUserDataAccessInterface,
         accounts.put(user.getName(), user);
         save();
     }
+    /**
+     * Returns whether a user with the given ID exists in this DAO.
+     *
+     * @param userId the unique user identifier (username)
+     * @return {@code true} if such a user exists; {@code false} otherwise
+     */
 
     @Override
     public boolean userExists(String userId) {
         return accounts.containsKey(userId);
     }
+    /**
+     * Returns whether a currency code is syntactically non-empty.
+     * This is a simple validation helper; additional validation
+     * could be added using {@link CurrencyListDAO} if needed.
+     *
+     * @param currencyCode the currency code to validate
+     * @return {@code true} if the code is non-null and not blank; {@code false} otherwise
+     */
 
     @Override
     public boolean currencyExists(String currencyCode) {
@@ -235,6 +283,13 @@ public class FileUserDataAccessObject implements SignupUserDataAccessInterface,
         favouritesByUser.put(username, new ArrayList<>(favs)); // store a copy
         save(); // persist to users.csv
     }
+    /**
+     * Saves the given list of favourites for the specified user, as required by
+     * {@link FavouriteCurrencyDataAccessInterface}.
+     *
+     * @param userId      the user whose favourites should be updated
+     * @param favourites  the new list of favourite currency codes
+     */
 
 
     @Override

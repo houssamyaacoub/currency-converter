@@ -1,18 +1,24 @@
 package use_case.load_currencies;
+
 /**
- * Output Boundary for the Load Currencies Use Case.
+ * The Output Boundary Interface (Port) for the Load Currencies Use Case.
+ * This interface is implemented by the Presenter and is called by the Interactor
+ * to deliver the results of the currency loading operation (success or failure).
  */
 public interface LoadCurrenciesOutputBoundary {
 
     /**
-     * Prepares the success view with the list of currencies.
-     * @param outputData The list of currency codes/names.
+     * Prepares the success view with the loaded list of currencies.
+     *
+     * @param outputData The {@link LoadCurrenciesOutputData} containing the list
+     * of available currency codes or names.
      */
     void presentSuccessView(LoadCurrenciesOutputData outputData);
 
     /**
-     * Prepares the fail view if data fetching fails.
-     * @param errorMessage The error message to display.
+     * Prepares the failure view when the currency list cannot be loaded.
+     *
+     * @param errorMessage A string explaining why the data fetching failed.
      */
     void prepareFailView(String errorMessage);
 }

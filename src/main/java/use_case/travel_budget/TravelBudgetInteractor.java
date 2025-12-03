@@ -10,7 +10,11 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Core Travel Budget business logic.
+ * Interactor for the Travel Budget use case.
+ * <br>
+ * Implements the application-specific business rules for calculating a
+ * travel budget across multiple currencies and converting everything
+ * into a single home currency.
  */
 public class TravelBudgetInteractor implements TravelBudgetInputBoundary {
 
@@ -33,6 +37,19 @@ public class TravelBudgetInteractor implements TravelBudgetInputBoundary {
         this.presenter = presenter;
     }
 
+    /**
+     * Executes the travel budget calculation.
+     * <br>
+     * Steps:
+     * 1) Validate the input lists and the home currency.
+     * 2) For each item, look up the source currency, fetch the latest rate
+     *    to the home currency, and convert the amount.
+     * 3) Accumulate the total in the home currency and build a breakdown
+     *    line for each item.
+     * 4) Send a {@link TravelBudgetOutputData} object to the presenter.
+     *
+     * @param inputData the input data for the travel budget calculation
+     */
     @Override
     public void execute(TravelBudgetInputData inputData) {
         try {
@@ -113,6 +130,9 @@ public class TravelBudgetInteractor implements TravelBudgetInputBoundary {
         }
     }
 
+    /**
+     * Requests that the UI switch back to the home view.
+     */
     @Override
     public void switchToHomeView() {
         presenter.prepareHomeView();
