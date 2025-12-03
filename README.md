@@ -28,8 +28,8 @@
 | **Houssam Yaacoub (Group member 2)**   | [@houssamyaacoub](https://github.com/houssamyaacoub) | Use case 2: Historical trends                       |
 | **Andy Yanxun Jiang (Group member 4)** | [@y4nxunj](https://github.com/y4nxunj)               | Use case 3: Compare strength of multiple currencies |
 | **Yao Dong Chen (Group member 5)**     | [@samuder1](https://github.com/samuder1)             | Use case 4: Favourite currencies                    |
-| **Junho Yoon (Group member 3)**        | [@alennchik](https://github.com/alennchik)           | Use case 5: Offline viewing using stored cache      |
-| **Alen Borangali (Group member 1)**    | [@6hoyoon](https://github.com/6hoyoon)               | Use case 6: Travel budget                           |
+| **Junho Yoon (Group member 3)**        | [@6hoyoon](https://github.com/6hoyoon)               | Use case 5: Offline viewing using stored cache      |
+| **Alen Borangali (Group member 1)**    | [@alennchik](https://github.com/alennchik)           | Use case 6: Travel budget                           |
 
 ---
 
