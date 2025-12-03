@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Iterator;
 
@@ -315,6 +316,11 @@ class TrendsInteractorTest {
                 return null;
             }
             return new Currency(name, "CODE");
+        }
+
+        @Override
+        public Iterator<Currency> getCurrencyIterator() {
+            return null;
         }
 
         @Override
