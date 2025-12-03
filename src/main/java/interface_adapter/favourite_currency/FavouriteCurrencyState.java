@@ -5,7 +5,6 @@ import java.util.List;
 
 /**
  * State object for the Favourite Currency feature (Use Case 5).
- *
  * This holds all the data the view needs to display favourite currencies
  * and any error messages.
  */
@@ -34,9 +33,12 @@ public class FavouriteCurrencyState {
      */
 
     public void setFavouriteCurrencies(List<String> favouriteCurrencies) {
-        this.favouriteCurrencies = favouriteCurrencies == null
-                ? new ArrayList<>()
-                : new ArrayList<>(favouriteCurrencies);
+        if (favouriteCurrencies == null) {
+            this.favouriteCurrencies = new ArrayList<>();
+        }
+        else {
+            this.favouriteCurrencies = new ArrayList<>(favouriteCurrencies);
+        }
     }
 
     /**
@@ -57,6 +59,11 @@ public class FavouriteCurrencyState {
      */
 
     public void setErrorMessage(String errorMessage) {
-        this.errorMessage = errorMessage == null ? "" : errorMessage;
+        if (errorMessage == null) {
+            this.errorMessage = "";
+        }
+        else {
+            this.errorMessage = errorMessage;
+        }
     }
 }

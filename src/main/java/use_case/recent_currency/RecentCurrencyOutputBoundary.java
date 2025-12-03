@@ -2,7 +2,6 @@ package use_case.recent_currency;
 
 /**
  * Output boundary for the Recent / Frequently Used Currencies use case (Use Case 8).
- *
  * The interactor calls this interface to present the updated ordering of currencies
  * so that the presenter can update the ViewModel.
  */

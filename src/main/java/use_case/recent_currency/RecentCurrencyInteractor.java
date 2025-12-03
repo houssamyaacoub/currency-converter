@@ -8,7 +8,6 @@ import java.util.stream.Collectors;
 
 /**
  * Interactor for the Recent / Frequently Used Currencies use case (Use Case 8).
- *
  * This class implements the application business rules for:
  *  - recording currency usage after a successful conversion, and
  *  - computing an ordered list of currencies:
@@ -34,6 +33,22 @@ public class RecentCurrencyInteractor implements RecentCurrencyInputBoundary {
         this.presenter = presenter;
     }
 
+    /**
+     * Records the usage of the currencies contained in {@code inputData}
+     * for the given user and computes a new ordered currency list.
+     * Behaviour:
+     * <ul>
+     *   <li>Validates that the user exists.</li>
+     *   <li>Records usage for both the "from" and "to" currencies (if non-empty).</li>
+     *   <li>Combines favourites, most frequently used currencies, and all supported
+     *       currencies into a single ordered list with duplicates removed.</li>
+     *   <li>Notifies the presenter with a {@link RecentCurrencyOutputData} object.</li>
+     * </ul>
+     *
+     * @param inputData information about which user and which currencies
+     *                  were involved in the conversion.
+     */
+
     @Override
     public void execute(RecentCurrencyInputData inputData) {
         String userId = inputData.getUserId();
@@ -48,12 +63,6 @@ public class RecentCurrencyInteractor implements RecentCurrencyInputBoundary {
 
         String from = normalize(inputData.getFromCurrencyCode());
         String to = normalize(inputData.getToCurrencyCode());
-
-        if (from == null && to == null) {
-            presenter.prepareFailView("No valid currencies provided.");
-            return;
-        }
-
         // 1. Record usage for each valid currency.
         if (from != null) {
             recentGateway.recordUsage(userId, from);
@@ -98,8 +107,13 @@ public class RecentCurrencyInteractor implements RecentCurrencyInputBoundary {
 
     /**
      * Computes the top N frequent currencies based on usage counts.
+     * Uses Collectors.toList() to ensure compatibility with Java &lt; 16.
      *
-     * Uses Collectors.toList() to ensure compatibility with Java < 16.
+     * @param usageCounts a map from currency code to its usage count for the user;
+     *                    may be {@code null} or empty.
+     * @param maxCount    the maximum number of currencies to return.
+     * @return a list of up to {@code maxCount} currency codes ordered from
+     *         most frequently used to least frequently used.
      */
     private List<String> computeTopFrequent(Map<String, Integer> usageCounts, int maxCount) {
         if (usageCounts == null || usageCounts.isEmpty()) {
@@ -120,6 +134,12 @@ public class RecentCurrencyInteractor implements RecentCurrencyInputBoundary {
      *  3. all remaining supported currencies last.
      *
      * Duplicates are removed while preserving insertion order.
+     *
+     * @param favourites   the list of favourite currency codes for the user; may be {@code null}.
+     * @param topFrequent  the list of top frequent currency codes; may be {@code null}.
+     * @param allSupported the list of all supported currency codes; may be {@code null}.
+     * @return a new list containing the ordered combination of all provided codes
+     *         with duplicates removed.
      */
     private List<String> buildOrderedList(List<String> favourites,
                                           List<String> topFrequent,

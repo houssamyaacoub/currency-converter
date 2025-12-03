@@ -5,7 +5,6 @@ import use_case.recent_currency.RecentCurrencyInputData;
 
 /**
  * Controller for the Recent / Frequently Used Currencies feature (Use Case 8).
- *
  * This controller is typically called after a successful conversion
  * to notify the RecentCurrencyInteractor that a given pair of currencies
  * has just been used.

@@ -2,8 +2,8 @@ package use_case.compare_currencies;
 
 /**
  * Input boundary (interface) for the "compare multiple currencies" use case.
- * <p>
- * The controller will call this instead of talking to the interactor directly.
+ *
+ * <p>The controller will call this instead of talking to the interactor directly.
  */
 public interface CompareCurrenciesInputBoundary {
 

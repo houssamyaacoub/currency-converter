@@ -5,9 +5,7 @@ import java.util.List;
 
 /**
  * Interactor for the Favourite Currency use case (Use Case 5).
- *
  * Application business rules for managing a user's favourite currencies.
- *
  * Behaviour:
  *   - Each call to execute(...) TOGGLES the given currency:
  *       * if the currency is not in favourites -> it is added
@@ -32,6 +30,16 @@ public class FavouriteCurrencyInteractor implements FavouriteCurrencyInputBounda
         this.favouriteGateway = favouriteGateway;
         this.presenter = presenter;
     }
+
+    /**
+     * Toggles the favourite state of the currency specified in
+     * {@code inputData} for the given user. This method enforces the
+     * business rule that a user can have at most {@value #MAX_FAVOURITES}
+     * favourite currencies.
+     *
+     * @param inputData the input describing which user and which currency
+     *                  should be toggled as a favourite
+     */
 
     @Override
     public void execute(FavouriteCurrencyInputData inputData) {
@@ -64,7 +72,8 @@ public class FavouriteCurrencyInteractor implements FavouriteCurrencyInputBounda
             // already a favourite -> remove it (always allowed)
             favourites.remove(normalized);
 
-        } else {
+        }
+        else {
             // not yet in favourites -> try to add it
             if (favourites.size() >= MAX_FAVOURITES) {
                 // list already full -> do NOT modify or save
