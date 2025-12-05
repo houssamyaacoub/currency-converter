@@ -4,33 +4,69 @@ import data_access.offline_viewing.PairRateCache;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests for Use Case: OfflineViewInteractor.
+ * Tests for use case: OfflineViewInteractor.
  *
- * We only test the interactor here. We use:
- *  - real PairRateCache instances (with test filenames) or small subclasses
- *    to control the behaviour of getAllRates / getLatestTimestamp
- *  - a stub OfflineViewOutputBoundary so we can assert success/failure
+ * We only test the interactor here. We stub:
+ *  - PairRateCache (so we control the cached rates and timestamps), and
+ *  - OfflineViewOutputBoundary (so we can assert success/failure behaviour).
  */
 class OfflineViewingInteractorTest {
+
+    /**
+     * Simple stub over PairRateCache.
+     *
+     * We ignore the actual file and just return the data we inject through
+     * the constructor. This avoids touching real offline data files.
+     */
+    private static class StubPairRateCache extends PairRateCache {
+
+        private final Map<String, Double> rates;
+        private final Instant latestTimestamp;
+        private final boolean throwOnAccess;
+
+        StubPairRateCache(Map<String, Double> rates,
+                          Instant latestTimestamp,
+                          boolean throwOnAccess) {
+            super("test_pairs_stub.csv");
+            this.rates = rates;
+            this.latestTimestamp = latestTimestamp;
+            this.throwOnAccess = throwOnAccess;
+        }
+
+        @Override
+        public synchronized Map<String, Double> getAllRates() {
+            if (this.throwOnAccess) {
+                throw new RuntimeException("Simulated cache failure");
+            }
+            return this.rates;
+        }
+
+        @Override
+        public synchronized Instant getLatestTimestamp() {
+            if (this.throwOnAccess) {
+                throw new RuntimeException("Simulated cache failure");
+            }
+            return this.latestTimestamp;
+        }
+    }
 
     @Test
     void successTest_validOfflineData() {
         // --- Arrange ---
-        // Use a test-specific filename so we don't interfere with real app data.
-        PairRateCache cache = new PairRateCache("test_pairs_success.csv");
+        Map<String, Double> cachedRates = new HashMap<>();
+        cachedRates.put("USD->CAD", 1.35);
+        cachedRates.put("EUR->CAD", 1.47);
+        Instant latest = Instant.now();
 
-        // Put a couple of fake pairs into the cache. This will also write to disk,
-        // but only to our test file.
-        Instant ts1 = Instant.now().minusSeconds(60);
-        Instant ts2 = Instant.now();
-        cache.put("USD", "CAD", 1.35, ts1);
-        cache.put("EUR", "CAD", 1.47, ts2);
+        PairRateCache cache = new StubPairRateCache(
+                cachedRates, latest, false);
 
         final boolean[] presentCalled = {false};
         final boolean[] failCalled = {false};
@@ -39,10 +75,8 @@ class OfflineViewingInteractorTest {
             @Override
             public void present(OfflineViewOutputData data) {
                 presentCalled[0] = true;
-                assertNotNull(data, "Output data should not be null on success.");
-                // If OfflineViewOutputData has getters, you COULD do:
-                // assertEquals(cache.getAllRates(), data.getRates());
-                // assertEquals(cache.getLatestTimestamp(), data.getLatestTimestamp());
+                assertNotNull(data,
+                        "Output data should not be null on success.");
             }
 
             @Override
@@ -51,21 +85,27 @@ class OfflineViewingInteractorTest {
             }
         };
 
-        OfflineViewInteractor interactor = new OfflineViewInteractor(cache, presenter);
+        OfflineViewInteractor interactor =
+                new OfflineViewInteractor(cache, presenter);
 
         // --- Act ---
         interactor.execute();
 
         // --- Assert ---
-        assertTrue(presentCalled[0], "present should be called when valid offline data exists.");
-        assertFalse(failCalled[0], "prepareFailView should not be called on success.");
+        assertTrue(presentCalled[0],
+                "present should be called when valid offline data exists.");
+        assertFalse(failCalled[0],
+                "prepareFailView should not be called on success.");
     }
 
     @Test
-    void failureTest_noOfflineData() {
+    void failureTest_emptyRates() {
         // --- Arrange ---
-        // New cache with a fresh test file: no pairs -> empty map + null latest timestamp.
-        PairRateCache cache = new PairRateCache("test_pairs_empty.csv");
+        Map<String, Double> emptyRates = Collections.emptyMap();
+        Instant latest = Instant.now();
+
+        PairRateCache cache = new StubPairRateCache(
+                emptyRates, latest, false);
 
         final boolean[] presentCalled = {false};
         final boolean[] failCalled = {false};
@@ -84,60 +124,56 @@ class OfflineViewingInteractorTest {
             }
         };
 
-        OfflineViewInteractor interactor = new OfflineViewInteractor(cache, presenter);
-
-        // --- Act ---
-        interactor.execute();
-
-        // --- Assert ---
-        assertFalse(presentCalled[0], "present should not be called when cache is empty.");
-        assertTrue(failCalled[0], "prepareFailView should be called when offline data is unavailable.");
-        assertEquals("Offline data unavailable.", errorMsg[0]);
-    }
-
-    @Test
-    void failureTest_exceptionFromCache() {
-        // --- Arrange ---
-        // Anonymous subclass that throws when getAllRates is called.
-        PairRateCache cache = new PairRateCache("test_pairs_exception.csv") {
-            @Override
-            public Map<String, Double> getAllRates() {
-                throw new RuntimeException("Simulated cache failure");
-            }
-
-            @Override
-            public Instant getLatestTimestamp() {
-                // Won't actually be used (getAllRates throws first),
-                // but we must still provide an implementation.
-                return Instant.now();
-            }
-        };
-
-        final boolean[] presentCalled = {false};
-        final boolean[] failCalled = {false};
-        final String[] errorMsg = {null};
-
-        OfflineViewOutputBoundary presenter = new OfflineViewOutputBoundary() {
-            @Override
-            public void present(OfflineViewOutputData data) {
-                presentCalled[0] = true;
-            }
-
-            @Override
-            public void prepareFailView(String errorMessage) {
-                failCalled[0] = true;
-                errorMsg[0] = errorMessage;
-            }
-        };
-
-        OfflineViewInteractor interactor = new OfflineViewInteractor(cache, presenter);
+        OfflineViewInteractor interactor =
+                new OfflineViewInteractor(cache, presenter);
 
         // --- Act ---
         interactor.execute();
 
         // --- Assert ---
         assertFalse(presentCalled[0],
-                "present should not be called when the cache throws an exception.");
+                "present should not be called when no rates exist.");
+        assertTrue(failCalled[0],
+                "prepareFailView should be called when offline data is "
+                        + "unavailable.");
+        assertEquals("Offline data unavailable.", errorMsg[0]);
+    }
+
+    @Test
+    void failureTest_exceptionFromCache() {
+        // --- Arrange ---
+        Map<String, Double> someRates = new HashMap<>();
+        someRates.put("USD->CAD", 1.35);
+
+        PairRateCache cache = new StubPairRateCache(
+                someRates, Instant.now(), true);
+
+        final boolean[] presentCalled = {false};
+        final boolean[] failCalled = {false};
+        final String[] errorMsg = {null};
+
+        OfflineViewOutputBoundary presenter = new OfflineViewOutputBoundary() {
+            @Override
+            public void present(OfflineViewOutputData data) {
+                presentCalled[0] = true;
+            }
+
+            @Override
+            public void prepareFailView(String errorMessage) {
+                failCalled[0] = true;
+                errorMsg[0] = errorMessage;
+            }
+        };
+
+        OfflineViewInteractor interactor =
+                new OfflineViewInteractor(cache, presenter);
+
+        // --- Act ---
+        interactor.execute();
+
+        // --- Assert ---
+        assertFalse(presentCalled[0],
+                "present should not be called when the cache throws.");
         assertTrue(failCalled[0],
                 "prepareFailView should be called when an exception occurs.");
         assertEquals("Offline data unavailable.", errorMsg[0]);
